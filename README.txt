@@ -221,6 +221,8 @@ CHANGER DE NIVEAU SANS QUITTER LA PARTIE
       Adversaire   effet immédiat
       Niveau       effet immédiat — pris en compte dès le prochain
                    coup de l'ordinateur
+      Damier       effet immédiat (les trois dessinent le même plateau)
+      Coordonnées  effet immédiat (A B C… en haut, 1 2 3… sur les côtés)
 
   Le panneau contient aussi « Nouvelle partie » (nouveau plateau, mêmes
   réglages) et « Menu principal » (quitter la partie — la seule sortie
@@ -241,9 +243,46 @@ CE QUI EST AFFICHÉ
   - À la victoire, la chaîne gagnante est mise en évidence en vert.
   - Bandeau du bas : à qui le tour, rappel des deux camps, touches.
 
-  GRILLE : un caractère de terminal est ~2x plus haut que large. Le
-  plateau utilise donc des cases de 3 colonnes espacées de 4, décalées
-  de 2 colonnes une ligne sur deux : c'est ce qui donne le quinconce.
+  GRILLE : un caractère de terminal est ~2x plus haut que large. La case
+  fait 3 colonnes et le pas 4, donc le DEMI-PAS vaut 2 colonnes. Chaque
+  ligne de cases est décalée d'un demi-pas vers la droite par rapport à
+  celle du dessus, et le décalage S'ACCUMULE (0, 2, 4, 6…) : c'est ce qui
+  dessine le losange, et ce qui fait que les quatre voisins diagonaux se
+  touchent vraiment à l'écran.
+
+  Le piège à ne pas refaire : décaler UNE LIGNE SUR DEUX. On obtenait un
+  rectangle à bords en dents de scie, où les diagonales ne se touchaient
+  plus — l'image ne correspondait plus aux vraies cases voisines, et les
+  quatre coins du plateau n'étaient même pas symétriques (2, 3, 2, 3 au
+  lieu de 2, 3, 3, 2). TestNeighborDegrees verrouille les deux.
+
+--------------------------------------------------------------------
+TROIS DAMIERS, ET LES COORDONNÉES
+--------------------------------------------------------------------
+
+  Le damier se choisit dans le menu ET dans le panneau de réglages en
+  cours de partie (il change donc sans perdre la partie). Les trois
+  dessinent le MÊME plateau : mêmes cases, mêmes voisins, mêmes règles.
+
+    0. Losange             une ligne par case, glyphes ⬢ ⬡ ·
+    1. Losange à bordures  bords Est–Ouest matérialisés ( \ et ■ )
+    2. Nid d'abeilles      deux lignes par case, l'hexagone est dessiné
+
+  Le nid d'abeilles est le seul où l'on VOIT les six voisins, puisqu'ils
+  partagent un côté. C'est la réponse à la question « cette case
+  touche-t-elle celle-là ? », qui restait ouverte avec les deux autres :
+  y répondre demandait de savoir si l'on était sur une ligne paire ou
+  impaire. C'est aussi le plus encombrant (deux lignes par case).
+
+  Les COORDONNÉES (A B C… en haut, 1 2 3… sur les côtés) s'affichent à la
+  demande. Les lettres sont alignées sur la première ligne de cases, comme
+  sur les diagrammes de HexWiki. Le damier « à bordures » laisse la marge
+  vide en face de ses deux lignes de bords : ce ne sont pas des lignes de
+  cases, elles n'ont donc pas de numéro.
+
+  Pour voir les six combinaisons sans lancer le jeu :
+
+      HEX_PREVIEW=1 go test ./ui/ -run TestApercuTroisDamiers -v
 
 --------------------------------------------------------------------
 FONCTIONNEMENT INTERNE
@@ -251,13 +290,23 @@ FONCTIONNEMENT INTERNE
 
   hex/hex.go        Logique pure, sans UI :
                       - Board n x n, cases (ligne, colonne)
-                      - Neighbors() : les 6 voisins, quinconce standard
+                      - les six directions DR/DC, en ordre cyclique, SEULE
+                        définition des voisins pour tout le programme
+                      - Neighbors() : les 6 voisins du losange
                       - HasWon() / Winner() : parcours en largeur depuis
                         le bord de départ du joueur
                       - WinningCells() : la chaîne gagnante, pour l'affichage
   hex/hex_test.go   Tests : symétrie des voisins, victoires connues, chaîne
                     trouée, double placement, et le THÉORÈME « pas de match
                     nul » vérifié sur des plateaux pleins aléatoires
+  hex/degree_test.go  Test qui DOCUMENTE la forme du plateau : les cases
+                    intérieures ont 6 voisins, les bords exactement 4, et
+                    les quatre coins 2,3,3,2. La symétrie des coins est la
+                    signature du losange ; le test échoue si on remet un
+                    tracé en quinconce.
+  ui/board.go       LES TROIS DAMIERS et les coordonnées. Une seule
+                    définition du demi-pas (indent), utilisée par le dessin,
+                    les bordures, les coordonnées et le clic de souris.
   ai/board.go       Plateau rapide pour les simulations : union-find
                     incrémental, victoire détectée dès qu'un camp relie
                     ses bords (sans remplir tout le plateau)
@@ -298,18 +347,29 @@ FONCTIONNEMENT INTERNE
 HISTORIQUE DE CONCEPTION (pour mémoire)
 --------------------------------------------------------------------
 
-  Le premier rendu essayé était le « nid d'abeilles » ASCII classique
-  (alvéoles dessinées avec / \ _). Il est très joli, MAIS son adjacence
-  n'est pas celle du Hex : dans ce pavage, deux cases d'une même ligne
-  ne se touchent pas (une alvéole s'intercale), et le graphe contient des
-  triangles — impossible dans un réseau hexagonal.
+  Trois détours, dont deux erreurs. Les noter évite de les refaire.
 
-  Ce n'est pas une impression : le test du théorème « pas de match nul »
-  échoue avec ce pavage, et les trois façons d'apparier les bords aussi.
+  1. Le tracé en QUINCONCE (une ligne sur deux décalée) avait été adopté
+     parce qu'il « ressemblait » à un réseau hexagonal. Il donnait en fait
+     un rectangle à bords dentelés, pas le losange de Hex, et faisait
+     dépendre les directions de la parité de la ligne — « nord-ouest » ne
+     menait pas au même endroit selon la ligne. Remplacé par le décalage
+     PROGRESSIF d'un demi-pas, avec UNE SEULE table de directions
+     partagée par les règles, le moteur et l'interface. Il y en avait
+     trois, et elles avaient divergé.
 
-  D'où le choix d'un treillis de pierres en quinconce : moins « nid
-  d'abeilles » visuellement, mais l'adjacence est exactement celle du
-  vrai Hex, et le théorème est vérifié.
+  2. Un premier dessin « nid d'abeilles » avait été écarté comme invalide
+     (le théorème du pas-de-match-nul échouait). La conclusion était trop
+     forte : c'est ce dessin-là qui était faux, pas le nid d'abeilles —
+     HexWiki s'en sert pour de vrais diagrammes. Le nid d'abeilles est
+     désormais proposé comme damier n° 2, et c'est le seul où l'on voit
+     les six voisins, puisqu'ils partagent un côté.
+
+  3. Un dessin de losange décalant d'UNE CASE ENTIÈRE par ligne au lieu
+     d'un demi-pas : les diagonales ne se touchaient plus, l'image
+     mentait sur les voisins. TestStylesRespectentLaGeometrie mesure le
+     décalage sur le rendu réel, pour chaque damier, et interdit que ça
+     revienne sans qu'on s'en aperçoive.
 
 --------------------------------------------------------------------
 REBUILD / TESTS
