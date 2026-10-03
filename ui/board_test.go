@@ -96,10 +96,11 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 				}
 				prev := -1
 				for r := 0; r < 7; r++ {
+					// On mesure sur la ligne BRUTE, sans rien retirer : le
+					// premier caractère visible est celui de la case (ou le
+					// numéro de ligne, qui suit le même décalage). L'écart
+					// entre deux lignes doit valoir le demi-pas.
 					l := lines[debut+r*per]
-					if coords {
-						l = l[3:] // marge des numéros de ligne
-					}
 					col := strings.IndexFunc(l, func(c rune) bool { return c != ' ' })
 					if col < 0 {
 						t.Errorf("ligne de cases %d : aucun caractère visible", r)

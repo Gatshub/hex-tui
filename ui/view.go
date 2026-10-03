@@ -10,21 +10,27 @@ import (
 	"hex-tui/hex"
 )
 
-// Géométrie du plateau : chaque case occupe 3 colonnes, espacées de 4. Une case
-// fait donc 4 colonnes de pas, et le DEMI-PAS vaut 2 colonnes.
+// Géométrie du plateau : une case fait UNE colonne, séparée de la suivante par
+// une colonne vide. Le pas vaut donc 2 colonnes, et le DEMI-PAS 1.
+//
+// Pourquoi si serré : un caractère de terminal est environ deux fois plus haut
+// que large. Pour qu'une diagonale du réseau hexagonal apparaisse à 60° — sa
+// vraie direction — il faut qu'elle avance d'une colonne pour une ligne. Avec
+// un pas de 4 colonnes, les diagonales tombaient à 45° et l'œil ne voyait plus
+// six voisins mais quatre : les deux cases diagonales semblaient trop loin.
+// Resserrer n'est donc pas qu'une question de place gagnée.
 //
 // Chaque ligne est décalée d'un demi-pas vers la droite PAR RAPPORT À CELLE DU
-// DESSUS : le décalage s'accumule (0, 2, 4, 6…) et ne revient jamais en
-// arrière. C'est ce qui dessine le losange, et ce qui fait que les quatre cases
-// diagonales voisines se touchent réellement à l'écran.
+// DESSUS : le décalage s'accumule (0, 1, 2, 3…) et ne revient jamais en
+// arrière. C'est ce qui dessine le losange.
 //
 // Le piège à ne pas refaire : décaler UNE LIGNE SUR DEUX (r%2). On obtient
 // alors un rectangle à bords en dents de scie, où les diagonales ne se touchent
 // plus — l'image ne correspond plus aux vraies cases voisines.
 const (
-	cellW   = 3
+	cellW   = 1
 	cellGap = 1
-	rowOff  = 2 // demi-pas en colonnes = (cellW+cellGap)/2
+	rowOff  = 1 // demi-pas en colonnes = (cellW+cellGap)/2
 )
 
 // indent renvoie le décalage horizontal, en colonnes, de la ligne r.

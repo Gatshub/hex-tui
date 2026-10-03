@@ -26,8 +26,9 @@ const (
 	styleHoney    = 2
 )
 
-// coordsMargin : « 12 » + une espace à gauche, une espace + « 12 » à droite.
-const coordsMargin = 6
+// coordsMargin : « 12 » et une espace, à gauche seulement. Les numéros à droite
+// faisaient doublon et encombraient la marge du losange.
+const coordsMargin = 3
 
 // boardRow est une ligne du dessin. row vaut -1 pour une ligne qui n'est PAS une
 // ligne de cases (les bordures Est–Ouest du damier n° 1) : ces lignes ne doivent
@@ -110,22 +111,29 @@ func (m Model) pad(line string) string {
 }
 
 // boardLines rend le plateau dans le damier choisi, coordonnées comprises.
+//
+// Les numéros de ligne ne sont écrits QU'À GAUCHE, et chacun suit le décalage de
+// SA ligne : il est donc juste à gauche de ses propres cases, et non dans une
+// marge lointaine. C'est ce que font les diagrammes de HexWiki, et c'est ce qui
+// rend le numéro utile — on lit « la ligne 5 », pas « un numéro aligné quelque
+// part à gauche ».
 func (m Model) boardLines() []string {
 	rows := m.boardRows()
 	out := make([]string, 0, len(rows)+1)
 	if m.showCoords {
-		out = append(out, m.pad(m.coordHeader()))
+		out = append(out, m.pad(strings.Repeat(" ", coordsMargin)+m.coordHeader()))
 	}
 	for _, b := range rows {
 		line := b.text
 		if m.showCoords {
 			if b.row < 0 {
-				// Ligne de décoration : on laisse la marge vide plutôt que
-				// d'inventer un numéro de ligne qui n'existe pas.
-				line = strings.Repeat(" ", 3) + line + strings.Repeat(" ", 3)
+				// Ligne de décoration (bordure) : pas de numéro, mais on
+				// réserve la même marge pour que tout reste aligné.
+				line = strings.Repeat(" ", coordsMargin) + line
 			} else {
-				line = fmt.Sprintf("%2d ", b.row+1) + line +
-					fmt.Sprintf(" %2d", b.row+1)
+				creux := strings.Repeat(" ", indent(b.row))
+				line = creux + fmt.Sprintf("%2d ", b.row+1) +
+					strings.TrimPrefix(b.text, creux)
 			}
 		}
 		out = append(out, m.pad(line))
@@ -227,7 +235,7 @@ func (m Model) rowsHoneycomb() []boardRow {
 func (m Model) coordHeader() string {
 	n := m.board.N
 	var sb strings.Builder
-	sb.WriteString(strings.Repeat(" ", 3+indent(0)))
+	sb.WriteString(strings.Repeat(" ", indent(0)))
 	for q := 0; q < n; q++ {
 		if q > 0 {
 			sb.WriteString(strings.Repeat(" ", cellGap))

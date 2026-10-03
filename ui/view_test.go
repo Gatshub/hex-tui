@@ -59,9 +59,9 @@ func TestBoardGeometry(t *testing.T) {
 		if got := lipgloss.Width(l); got != want {
 			t.Fatalf("ligne %d : largeur %d, attendu %d", i, got, want)
 		}
-		// Le marqueur est centré dans une case de 3 colonnes : le premier
-		// caractère visible est donc en colonne 1, plus le décalage de la ligne.
-		wantFirst := 1 + indent(i)
+		// Le marqueur occupe une case d'UNE colonne : le premier caractère
+		// visible est donc en colonne indent(i), plus le décalage de la ligne.
+		wantFirst := indent(i)
 		if got := firstVisible(l); got != wantFirst {
 			t.Fatalf("ligne %d : premier marqueur en colonne %d, attendu %d",
 				i, got, wantFirst)

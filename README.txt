@@ -244,11 +244,18 @@ CE QUI EST AFFICHÉ
   - Bandeau du bas : à qui le tour, rappel des deux camps, touches.
 
   GRILLE : un caractère de terminal est ~2x plus haut que large. La case
-  fait 3 colonnes et le pas 4, donc le DEMI-PAS vaut 2 colonnes. Chaque
+  fait UNE colonne et le pas 2, donc le DEMI-PAS vaut 1 colonne. Chaque
   ligne de cases est décalée d'un demi-pas vers la droite par rapport à
-  celle du dessus, et le décalage S'ACCUMULE (0, 2, 4, 6…) : c'est ce qui
-  dessine le losange, et ce qui fait que les quatre voisins diagonaux se
-  touchent vraiment à l'écran.
+  celle du dessus, et le décalage S'ACCUMULE (0, 1, 2, 3…) : c'est ce qui
+  dessine le losange.
+
+  Pourquoi si serré : sur un réseau hexagonal, deux cases diagonales sont
+  à 60°, pas à 45°. Avec un pas de 4 colonnes, la diagonale tombait à
+  45° — l'œil ne voyait plus six voisins mais quatre, les deux cases
+  diagonales semblant trop loin. Il faut donc qu'une diagonale avance
+  d'UNE colonne pour UNE ligne (l'écran compensant le reste par la
+  forme allongée du caractère). Resserrer n'est pas qu'une question de
+  place gagnée : c'est ce qui rend l'adjacence visible.
 
   Le piège à ne pas refaire : décaler UNE LIGNE SUR DEUX. On obtenait un
   rectangle à bords en dents de scie, où les diagonales ne se touchaient
@@ -274,11 +281,15 @@ TROIS DAMIERS, ET LES COORDONNÉES
   y répondre demandait de savoir si l'on était sur une ligne paire ou
   impaire. C'est aussi le plus encombrant (deux lignes par case).
 
-  Les COORDONNÉES (A B C… en haut, 1 2 3… sur les côtés) s'affichent à la
-  demande. Les lettres sont alignées sur la première ligne de cases, comme
-  sur les diagrammes de HexWiki. Le damier « à bordures » laisse la marge
-  vide en face de ses deux lignes de bords : ce ne sont pas des lignes de
-  cases, elles n'ont donc pas de numéro.
+  Les COORDONNÉES s'affichent à la demande : les lettres (A B C…) en haut,
+  alignées sur la première ligne de cases, et les numéros de ligne (1 2 3…)
+  À GAUCHE SEULEMENT — à droite ils faisaient doublon et encombraient la
+  marge du losange.
+
+  Chaque numéro suit le décalage de SA ligne : il est donc juste à gauche
+  de ses propres cases et non perdu dans une marge lointaine, comme sur
+  les diagrammes de HexWiki. Le damier « à bordures » ne numérote pas ses
+  deux lignes de bords : ce ne sont pas des lignes de cases.
 
   Pour voir les six combinaisons sans lancer le jeu :
 
