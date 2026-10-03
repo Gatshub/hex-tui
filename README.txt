@@ -1,11 +1,54 @@
 HEX-TUI — le jeu de Hex pour le terminal
 ========================================
 
-Projet : ~/Work/hex-tui
-Binaire installé : ~/.local/bin/hex-tui  (déjà dans le PATH)
-
 Écrit en Go avec les bibliothèques Charm (Bubble Tea + Lip Gloss),
 en plein écran.
+
+Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
+
+--------------------------------------------------------------------
+ÉTAT ACTUEL   (mis à jour le samedi 3 octobre 2026)
+--------------------------------------------------------------------
+
+  Fini et utilisable. Rien en chantier, rien de cassé.
+
+    - Règles complètes du Hex sur plateau losange (7 à 13), vérifiées
+      par un test de propriété : sur un plateau plein, il y a TOUJOURS
+      exactement un vainqueur (théorème du pas-de-match-nul).
+    - Deux joueurs au clavier, OU adversaire ordinateur (3 niveaux).
+    - Curseur 6 directions, souris, annuler, aide, écran de victoire
+      avec la chaîne gagnante mise en évidence.
+    - Panneau de réglages EN COURS DE PARTIE (touche « s » ou Échap) :
+      on change de niveau ou d'adversaire sans perdre le plateau.
+    - `go test ./...` passe : règles (hex/), moteur (ai/), interface (ui/).
+    - Binaire installé et fonctionnel (~/.local/bin/hex-tui).
+
+  Le moteur, et ce qu'il vaut (mesuré, pas supposé) : recherche UCT
+  avec coups décisifs vérifiés exactement. Il bat largement l'ancien
+  algorithme (39-9 à travail égal). Les connexions virtuelles ont été
+  implémentées puis MESURÉES : 24-24, aucun apport — elles sont donc
+  désactivées par défaut, code et mesure conservés.
+
+  Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas) :
+    - le moteur reste perfectible (politique de simulation guidée) ;
+    - pas de règle du gâteau (échange de camps) pour équilibrer
+      l'avantage du premier joueur.
+
+  Prochaine étape naturelle : guider la simulation du moteur, ou la
+  règle du gâteau.
+
+--------------------------------------------------------------------
+LIEUX
+--------------------------------------------------------------------
+
+  Sources .......... ~/Work/hex-tui
+  Binaire installé .. ~/.local/bin/hex-tui         (dans le PATH)
+  Compilation ....... ~/Work/hex-tui/bin/hex-tui   (ignoré par Git)
+  Dépôt Git ......... ~/Work/hex-tui/.git          (branche master)
+  Dépôt distant ..... à créer — voir METHODE.md §4.2
+  Données de jeu .... aucune (parties en mémoire seulement)
+  Documentation ..... ~/Work/hex-tui/README.txt (ce fichier)
+                      ~/Work/METHODE.md (méthode commune)
 
 --------------------------------------------------------------------
 LE JEU
@@ -267,3 +310,34 @@ DÉSINSTALLER
 
       rm ~/.local/bin/hex-tui
       rm -rf ~/Work/hex-tui           # supprime aussi les sources
+
+--------------------------------------------------------------------
+À FAIRE / IDÉES
+--------------------------------------------------------------------
+
+  [ ] Moteur : guider la POLITIQUE de simulation
+      But : le moteur joue au hasard pendant les simulations. Un vrai
+      moteur Hex répond aux menaces locales — c'est le principal levier
+      de force restant (bien plus que les connexions virtuelles).
+
+      État actuel : UCT + coups décisifs exacts. Bat l'ancien moteur
+      39-9 à travail égal. Les connexions virtuelles sont implémentées
+      mais désactivées (mesurées à 24-24, aucun apport).
+
+      Piste : dans ai/board.go, playout() remplit au hasard. Essayer une
+      heuristique de réponse locale (si l'adversaire menace un pont, y
+      répondre), puis MESURER au banc d'essai contre la version actuelle.
+
+      Mesure à refaire : HEX_BENCH=1 go test ./ai/ -count=1
+
+  [ ] Règle du gâteau (pie rule) pour équilibrer la partie
+      But : au Hex, le premier joueur gagne avec un jeu correct. Le
+      second peut « échanger » les camps après le premier coup.
+
+      Piste : après le premier coup, demander au joueur Est–Ouest s'il
+      veut échanger les camps. À activer au menu, comme option.
+
+  [ ] Connexions virtuelles : vraie recherche H
+      But : remplacer l'approximation par ponts (0,44 % d'erreur) par un
+      calcul exact, puis s'en servir pour GUIDER la simulation plutôt que
+      pour couper l'arbre — c'est là qu'elles paient chez MoHex.
