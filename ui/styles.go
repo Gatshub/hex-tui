@@ -18,6 +18,7 @@ var (
 	colWarn     = lipgloss.AdaptiveColor{Light: "#8a5a12", Dark: "#e0af68"}
 	colCursorBG = lipgloss.AdaptiveColor{Light: "#b9c6f0", Dark: "#3d59a1"}
 	colCursorFG = lipgloss.AdaptiveColor{Light: "#1a1b26", Dark: "#ffffff"}
+	colBorder   = lipgloss.AdaptiveColor{Light: "#8a8fa3", Dark: "#3b4261"}
 )
 
 // Styles.
@@ -31,6 +32,8 @@ var (
 	styleNordSud  = lipgloss.NewStyle().Foreground(colNordSud)
 	styleEstOuest = lipgloss.NewStyle().Foreground(colEstOuest)
 	styleKey      = lipgloss.NewStyle().Foreground(colAccent)
+	styleBorder   = lipgloss.NewStyle().Foreground(colBorder)
+	styleCoord    = lipgloss.NewStyle().Foreground(colMuted)
 	styleHelpKey  = lipgloss.NewStyle().Foreground(colNordSud).Bold(true)
 	styleSelItem  = lipgloss.NewStyle().Foreground(colBG).Background(colNordSud).Bold(true).Padding(0, 2)
 	styleMenuItem = lipgloss.NewStyle().Foreground(colFG).Padding(0, 2)

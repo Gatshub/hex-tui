@@ -28,60 +28,18 @@ const (
 )
 
 // indent renvoie le décalage horizontal, en colonnes, de la ligne r.
+// Le plateau, les bordures et les coordonnées s'appuient tous dessus : c'est la
+// seule définition du « demi-pas » dans l'interface.
 func indent(r int) int { return rowOff * r }
-
-// boardWidth renvoie la largeur en colonnes du plateau courant, décalage de la
-// dernière ligne compris.
-func (m Model) boardWidth() int {
-	n := m.board.N
-	return n*cellW + (n-1)*cellGap + indent(n-1)
-}
 
 // ---------------------------------------------------------------- plateau --
 
+// renderCell existe pour les tests et les aperçus : c'est une case du damier
+// « losange », rendue dans une largeur fixe. Le rendu du plateau lui-même est
+// dans board.go (trois damiers au choix).
 func (m Model) renderCell(r, q int) string {
-	p := m.board.At(r, q)
-	mark, st := "·", styleMuted
-	switch p {
-	case hex.NordSud:
-		mark, st = "⬢", styleNordSud
-	case hex.EstOuest:
-		mark, st = "⬡", styleEstOuest
-	}
-	if m.onPath(r, q) {
-		st = styleGood
-	}
-	if m.screen != scrWin && r == m.cursorR && q == m.cursorC {
-		st = lipgloss.NewStyle().
-			Foreground(colCursorFG).
-			Background(colCursorBG).
-			Bold(true)
-	}
+	mark, st := m.cellMark(r, q)
 	return st.Width(cellW).Align(lipgloss.Center).Render(mark)
-}
-
-func (m Model) renderBoard() []string {
-	n := m.board.N
-	lines := make([]string, 0, n)
-	for r := 0; r < n; r++ {
-		var sb strings.Builder
-		sb.WriteString(strings.Repeat(" ", indent(r)))
-		for q := 0; q < n; q++ {
-			if q > 0 {
-				sb.WriteString(strings.Repeat(" ", cellGap))
-			}
-			sb.WriteString(m.renderCell(r, q))
-		}
-		// On complète à la largeur maximale : sinon les lignes basses, plus
-		// larges à cause du décalage, seraient centrées différemment et le
-		// losange apparaîtrait en escalier.
-		line := sb.String()
-		if pad := m.boardWidth() - lipgloss.Width(line); pad > 0 {
-			line += strings.Repeat(" ", pad)
-		}
-		lines = append(lines, line)
-	}
-	return lines
 }
 
 // ---------------------------------------------------------------- écrans --
@@ -97,7 +55,7 @@ func (m Model) View() string {
 		return m.viewSettings()
 	}
 	if m.screen != scrMenu &&
-		(m.width < m.boardWidth()+2 || m.height < m.board.N+8) {
+		(m.width < m.boardWidth()+2 || m.height < len(m.boardLines())+8) {
 		return m.viewTooSmall()
 	}
 	switch m.screen {
@@ -114,7 +72,7 @@ func (m Model) viewTooSmall() string {
 	msg := styleWarn.Render(fmt.Sprintf("Fenêtre trop petite : %d×%d", m.width, m.height)) +
 		"\n\n" + styleMuted.Render(fmt.Sprintf("Plateau %d×%d : au moins %d colonnes",
 		m.board.N, m.board.N, m.boardWidth()+2)) +
-		"\n" + styleMuted.Render(fmt.Sprintf("et %d lignes.", m.board.N+8)) +
+		"\n" + styleMuted.Render(fmt.Sprintf("et %d lignes.", len(m.boardLines())+8)) +
 		"\n\n" + styleMuted.Render("Échap : menu   ·   q : quitter")
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
 		lipgloss.NewStyle().Align(lipgloss.Center).Render(msg))
@@ -167,8 +125,10 @@ func (m Model) viewMenu() string {
 		m.cfgRow(m.menuRow == 0, "Taille", m.cfgSize()),
 		m.cfgRow(m.menuRow == 1, "Adversaire", opponents[m.opponentIdx]),
 		m.cfgLevelRow(m.menuRow == 2),
+		m.cfgRow(m.menuRow == 3, "Damier", boardStyles[m.styleIdx]),
+		m.cfgRow(m.menuRow == 4, "Coordonnées", ouiNon(m.showCoords)),
 		"",
-		m.cfgActRow(m.menuRow == 3, "Commencer"),
+		m.cfgActRow(m.menuRow == lastMenuRow, "Commencer"),
 	}
 	lines := []string{
 		styleTitle.Render("H E X"),
@@ -189,9 +149,11 @@ func (m Model) viewSettings() string {
 		m.cfgRow(m.settingsRow == 0, "Taille", m.cfgSize()),
 		m.cfgRow(m.settingsRow == 1, "Adversaire", opponents[m.opponentIdx]),
 		m.cfgLevelRow(m.settingsRow == 2),
+		m.cfgRow(m.settingsRow == 3, "Damier", boardStyles[m.styleIdx]),
+		m.cfgRow(m.settingsRow == 4, "Coordonnées", ouiNon(m.showCoords)),
 		"",
-		m.cfgActRow(m.settingsRow == 3, "Nouvelle partie"),
-		m.cfgActRow(m.settingsRow == 4, "Menu principal"),
+		m.cfgActRow(m.settingsRow == rowNewGame, "Nouvelle partie"),
+		m.cfgActRow(m.settingsRow == rowMainMenu, "Menu principal"),
 	}
 	lines := []string{
 		styleTitle.Render("Réglages"),
@@ -200,12 +162,20 @@ func (m Model) viewSettings() string {
 		"",
 		styleBox.Render(strings.Join(items, "\n")),
 		"",
-		styleGood.Render("Le niveau et l'adversaire s'appliquent aussitôt."),
+		styleGood.Render("Niveau, adversaire, damier et coordonnées s'appliquent aussitôt."),
 		styleMuted.Render("La taille n'agit qu'avec « Nouvelle partie »."),
 		"",
 		m.settingsFooter(),
 	}
 	return m.assemble(lines)
+}
+
+// ouiNon rend un booléen en français, pour les lignes de réglages.
+func ouiNon(b bool) string {
+	if b {
+		return "oui"
+	}
+	return "non"
 }
 
 // settingsFooter adapte le rappel des touches à la largeur disponible.
@@ -245,7 +215,7 @@ func (m Model) buildPlay() []string {
 		styleTitle.Render("H E X"),
 		styleSubtitle.Render(m.subtitle()),
 	}
-	lines = append(lines, m.renderBoard()...)
+	lines = append(lines, m.boardLines()...)
 	lines = append(lines, "")
 	lines = append(lines, m.statusStyle.Render(m.status))
 	lines = append(lines, m.legendLine())
@@ -258,7 +228,7 @@ func (m Model) viewWin() string {
 		styleTitle.Render("H E X"),
 		styleSubtitle.Render(fmt.Sprintf("Partie terminée — %d × %d", m.board.N, m.board.N)),
 	}
-	lines = append(lines, m.renderBoard()...)
+	lines = append(lines, m.boardLines()...)
 	lines = append(lines, "")
 	lines = append(lines, playerStyle(m.winner).Bold(true).
 		Render("★  "+m.winner.String()+" relie ses deux bords — victoire !  ★"))
@@ -368,18 +338,28 @@ func (m Model) assemble(lines []string) string {
 
 // -------------------------------------------------------------- souris --
 
-// cellAt convertit des coordonnées terminal en (ligne, colonne) du plateau.
+// cellAt convertit des coordonnées terminal en (ligne, colonne) du plateau. Il
+// doit suivre exactement le damier choisi : nombre de lignes par case, décalage
+// en demi-pas, et marge des coordonnées s'ils sont affichés.
 func (m Model) cellAt(x, y int) (int, int, bool) {
 	lines := m.buildPlay()
 	top := 0
 	if gap := (m.height - len(lines)) / 2; gap > 0 {
 		top = gap
 	}
-	gridY := top + 2 // titre + sous-titre
+	gridY := top + 2 + borderLines(m.styleIdx) // titre + sous-titre + bordure haute
+	if m.showCoords {
+		gridY++ // décalage : l'en-tête des lettres fait partie du bloc
+	}
 	gridX := (m.width - m.boardWidth()) / 2
+	if m.showCoords {
+		gridX += 3 // « 12 » et une espace, à gauche
+	}
 
-	r := y - gridY
-	if r < 0 || r >= m.board.N {
+	// Une ligne de cases peut occuper plusieurs lignes de texte (nid d'abeilles).
+	per := linesPerCell(m.styleIdx)
+	r := (y - gridY) / per
+	if y < gridY || r < 0 || r >= m.board.N {
 		return 0, 0, false
 	}
 	lx := x - gridX - indent(r)

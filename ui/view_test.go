@@ -48,7 +48,7 @@ func TestMenuRenders(t *testing.T) {
 func TestBoardGeometry(t *testing.T) {
 	m := testModel(120, 40)
 	m = m.start(9)
-	lines := m.renderBoard()
+	lines := m.boardLines()
 	if len(lines) != 9 {
 		t.Fatalf("%d lignes, attendu 9", len(lines))
 	}

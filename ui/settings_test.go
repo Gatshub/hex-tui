@@ -163,7 +163,7 @@ func TestNewGameFromSettings(t *testing.T) {
 		t.Fatalf("taille choisie %q, attendu 9 × 9", m.cfgSize())
 	}
 
-	m.settingsRow = 3
+	m.settingsRow = rowNewGame
 	nm, _ = m.Update(runeKey(' ')) // Nouvelle partie
 	m = nm.(Model)
 	if m.board.N != 9 {
@@ -187,7 +187,7 @@ func TestMenuPrincipalFromSettings(t *testing.T) {
 	m = m.start(7)
 	nm, _ := m.Update(runeKey('s'))
 	m = nm.(Model)
-	m.settingsRow = 4
+	m.settingsRow = rowMainMenu
 	nm, _ = m.Update(runeKey(' '))
 	m = nm.(Model)
 	if m.screen != scrMenu {

@@ -21,6 +21,17 @@ const (
 // Sizes liste les tailles de plateau proposées.
 var Sizes = []int{7, 9, 11, 13}
 
+// Lignes des panneaux de réglages. Le menu et le panneau en jeu partagent les
+// mêmes cinq premières lignes (jusqu'aux coordonnées) ; le panneau en jeu ajoute
+// deux actions. Les bornes sont nommées ici : un « < 3 » en dur deviendrait faux
+// à la première ligne ajoutée.
+const (
+	rowNewGame      = 5 // panneau en jeu : nouvelle partie
+	rowMainMenu     = 6 // panneau en jeu : retour au menu principal
+	lastMenuRow     = 5 // menu : la ligne 5 est « commencer »
+	lastSettingsRow = 6
+)
+
 // Adversaires proposés au menu.
 var opponents = []string{"2 joueurs", "Ordinateur"}
 
@@ -37,10 +48,14 @@ type Model struct {
 	showSettings  bool
 
 	// Menu.
-	menuRow     int // 0 taille, 1 adversaire, 2 niveau, 3 commencer
+	menuRow     int // 0 taille, 1 adversaire, 2 niveau, 3 damier, 4 coordonnées, 5 commencer
 	sizeIdx     int
 	opponentIdx int
 	levelIdx    int
+
+	// Affichage du plateau, réglable à tout moment (menu ET panneau en jeu).
+	styleIdx   int  // damier choisi, index dans boardStyles
+	showCoords bool // afficher les coordonnées A B C… / 1 2 3…
 
 	// Panneau de réglages en cours de partie.
 	settingsRow int // 0 taille, 1 adversaire, 2 niveau, 3 nouvelle partie, 4 menu
@@ -145,7 +160,7 @@ func (m Model) menuKey(key string) (tea.Model, tea.Cmd) {
 			m.menuRow--
 		}
 	case "down", "j":
-		if m.menuRow < 3 {
+		if m.menuRow < lastMenuRow {
 			m.menuRow++
 		}
 	case "left", "h":
@@ -162,10 +177,12 @@ func (m Model) menuKey(key string) (tea.Model, tea.Cmd) {
 func (m *Model) menuChange(d int) { m.changeValue(m.menuRow, d) }
 
 // changeValue modifie la valeur de la ligne `row` (0 taille, 1 adversaire,
-// 2 niveau). La ligne est passée en paramètre car le menu et le panneau de
-// réglages en cours de partie partagent ces valeurs mais pas leur sélection.
-// Le nombre de joueurs est répercuté tout de suite, pour que le réglage en
-// cours de partie prenne effet sans attendre.
+// 2 niveau, 3 damier, 4 coordonnées). La ligne est passée en paramètre car le
+// menu et le panneau de réglages en cours de partie partagent ces valeurs mais
+// pas leur sélection.
+//
+// Le nombre de joueurs et le damier sont répercutés tout de suite, pour que le
+// réglage en cours de partie prenne effet sans attendre.
 func (m *Model) changeValue(row, d int) {
 	cycle := func(v, n int) int { return ((v+d)%n + n) % n }
 	switch row {
@@ -176,6 +193,10 @@ func (m *Model) changeValue(row, d int) {
 		m.vsAI = m.opponentIdx == 1
 	case 2:
 		m.levelIdx = cycle(m.levelIdx, len(ai.Levels))
+	case 3:
+		m.styleIdx = cycle(m.styleIdx, len(boardStyles))
+	case 4:
+		m.showCoords = !m.showCoords
 	}
 }
 
@@ -245,7 +266,7 @@ func (m *Model) openSettings() {
 
 // settingsKey gère le panneau de réglages.
 func (m Model) settingsKey(key string) (tea.Model, tea.Cmd) {
-	const lastRow = 4
+	const lastRow = lastSettingsRow
 	switch key {
 	case "q":
 		return m, tea.Quit
@@ -265,9 +286,9 @@ func (m Model) settingsKey(key string) (tea.Model, tea.Cmd) {
 		m.changeValue(m.settingsRow, 1)
 	case "enter", " ":
 		switch m.settingsRow {
-		case 3: // nouvelle partie, avec la taille choisie
+		case rowNewGame: // nouvelle partie, avec la taille choisie
 			return m.start(Sizes[m.sizeIdx]), nil
-		case 4: // retour au menu principal
+		case rowMainMenu: // retour au menu principal
 			m.showSettings = false
 			m.thinking = false
 			m.screen = scrMenu
