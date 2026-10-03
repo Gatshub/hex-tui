@@ -35,13 +35,18 @@ Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
   réutilisation de l'arbre de recherche (95-105 sur 200 parties). Tous deux
   sont désactivés par défaut, code et mesure conservés.
 
-  Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas) :
+  Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas, et la note
+  STRATEGIE.md pour l'ordre recommandé) :
+    - aucun TEMPLATE dans la détection de connexions : elle ne connaît
+      que les ponts, d'où son déclenchement rare (0,23 % des nœuds) ;
+    - pas d'élagage (région mustplay, cellules capturées/dominées) ;
     - le moteur reste perfectible (politique de simulation guidée) ;
     - pas de règle du gâteau (échange de camps) pour équilibrer
       l'avantage du premier joueur.
 
-  Prochaine étape naturelle : guider la simulation du moteur, ou la
-  règle du gâteau.
+  Prochaine étape naturelle : les templates (STRATEGIE.md, levier A) —
+  ils prolongent du code déjà écrit et déjà testé. Puis la politique de
+  simulation, qui est le vrai levier de force.
 
 --------------------------------------------------------------------
 LIEUX
@@ -53,6 +58,9 @@ LIEUX
   Dépôt Git ......... ~/Work/hex-tui/.git          (branche master)
   Dépôt distant ..... https://github.com/Gatshub/hex-tui      (privé)
   Données de jeu .... aucune (parties en mémoire seulement)
+  Note de moteur .... ~/Work/hex-tui/STRATEGIE.md  (extraction de la
+                     feuille de route HexWiki et des leviers de force :
+                     quoi tenter, dans quel ordre, et avec quel risque)
   Documentation ..... ~/Work/hex-tui/README.txt (ce fichier)
                       ~/Work/METHODE.md (méthode commune)
 
@@ -426,6 +434,53 @@ DÉSINSTALLER
 --------------------------------------------------------------------
 À FAIRE / IDÉES
 --------------------------------------------------------------------
+
+  VUE D'ENSEMBLE, ET ORDRE RECOMMANDÉ : voir STRATEGIE.md.
+
+  C'est l'extraction de la feuille de route de HexWiki (Strategy_roadmap)
+  et des pages qu'elle pointe (ziggurat, Captured cell, Mustplay region).
+  Elle range les concepts en deux familles — les RÈGLES SÛRES, qui
+  éliminent un coup sans jamais se tromper, et les HEURISTIQUES, qui
+  guident sans garantir — et signale le piège principal : la région
+  mustplay est la plus forte des idées, mais elle n'est sûre QUE si les
+  connexions virtuelles sont exactes. Or les nôtres se trompent dans
+  0,44 % des cas, ce qui suffirait à élaguer un coup gagnant en silence.
+
+  Les idées ci-dessous sont listées par ancienneté, pas par priorité.
+
+  [ ] Moteur : templates dans la fermeture (ziggurat, template de bord II)
+      But : notre détection ne connaît que les ponts. Les templates de
+      bord (niveau 100 de la feuille de route, très fréquents là où les
+      parties se décident) la rendraient bien plus souvent utile : elle
+      ne se déclenche aujourd'hui que sur 0,23 % des nœuds.
+
+      Piste : ajouter les carriers de edge template II et du ziggurat
+      (III1-a) à la fermeture de ai/vc.go. Risque de JUSTESSE à
+      surveiller : TestVirtualConnectionIsSound (exhaustif 4×4, seuil
+      3 %) doit passer avant ET après.
+
+  [ ] Moteur : élaguer les cellules CAPTURÉES / DOMINÉES
+      But : « il n'est jamais avantageux de jouer dans une zone capturée
+      par l'adversaire ». Règle LOCALE et sûre, plus simple que la région
+      mustplay. Exemple type : la 2e ligne de bord — si l'adversaire joue
+      l'une des deux cases, je joue l'autre et sa pierre meurt.
+
+      Piste : détection locale autour des pierres de bord, sans fermeture
+      globale. C'est un élagage SÛR : il ne peut pas affaiblir le moteur.
+
+  [ ] Moteur : région MUSTPLAY (élagage exact)
+      But : tout coup hors de l'intersection des porteurs des menaces de
+      l'adversaire est PERDANT — théorème, pas heuristique. C'est ce qui
+      a permis de résoudre le 7×7 en 2005, et le plus fort levier de
+      cette liste.
+
+      PRÉREQUIS : une détection conservatrice, qui n'affirme une
+      connexion que si elle est démontrée. Manquer une menace rend la
+      région plus GRANDE (élagage plus timide) : on perd de la vitesse,
+      jamais de la justesse. C'est le bon sens de l'erreur.
+
+      À ne tenter qu'après les templates, et avec un test exhaustif
+      (4×4 puis 5×5) qui vérifie qu'aucun coup gagnant n'est élagué.
 
   [ ] Moteur : guider la POLITIQUE de simulation
       But : pendant les simulations, le moteur joue au hasard. Un vrai
