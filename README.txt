@@ -45,7 +45,7 @@ LIEUX
   Binaire installé .. ~/.local/bin/hex-tui         (dans le PATH)
   Compilation ....... ~/Work/hex-tui/bin/hex-tui   (ignoré par Git)
   Dépôt Git ......... ~/Work/hex-tui/.git          (branche master)
-  Dépôt distant ..... à créer — voir METHODE.md §4.2
+  Dépôt distant ..... https://github.com/Gatshub/hex-tui      (privé)
   Données de jeu .... aucune (parties en mémoire seulement)
   Documentation ..... ~/Work/hex-tui/README.txt (ce fichier)
                       ~/Work/METHODE.md (méthode commune)
