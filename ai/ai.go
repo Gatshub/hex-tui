@@ -46,22 +46,32 @@ type Level struct {
 // Levels liste les niveaux proposés, du plus faible au plus fort.
 //
 // Les valeurs sont des simulations UCT PAR CASE. Sur un 11×11 (121 cases), cela
-// fait 3 025, 12 100 et 60 500 simulations, soit environ 30 ms, 120 ms et
-// 600 ms par coup. Sur un 13×13 : 4 225, 16 900 et 84 500, soit environ
-// 55 ms, 220 ms et 1,1 s.
+// fait 3 025, 12 100 et 90 750 simulations. Temps MESURÉS du coup le plus lent
+// d'une partie (TestBenchSpeed) : 89 ms, 330 ms et 2,6 s.
+//
+// POURQUOI DIFFICILE VAUT 750. Le budget est le seul levier dont l'effet sur la
+// force soit mesuré ici : un rapport de 1,5 donne 75-25 sur 100 parties (5 σ),
+// et un quadruplement donne 46-2. Tout le reste — connexions virtuelles,
+// réutilisation d'arbre, politique de simulation — a été mesuré sans apport.
+//
+// Le prix est le temps d'attente, et il est assumé : Difficile dépasse la règle
+// des ~1 s que le projet s'était fixée. Facile et Moyen restent rapides, ce qui
+// laisse le choix à qui veut jouer vite.
 //
 // À ne pas confondre avec l'ancien Monte-Carlo plat, qui comptait ses
 // simulations par case CANDIDATE — le premier piège rencontré.
 var Levels = []Level{
 	{Name: "Facile", PerCell: 25},
 	{Name: "Moyen", PerCell: 100},
-	{Name: "Difficile", PerCell: 500},
+	{Name: "Difficile", PerCell: 750},
 }
 
 // Rollouts renvoie le budget de simulations d'un niveau sur un plateau de côté
 // n (soit n×n cases). Les mesures de bench_test.go servent de garde-fou sur le
-// temps de réponse : au-delà d'environ une seconde par coup, augmenter le
-// budget n'est plus acceptable pour un jeu au clavier.
+// temps de réponse. La règle du projet était de rester sous ~1 s par coup ;
+// Difficile la dépasse sciemment depuis que le budget est le seul levier de
+// force dont l'effet soit mesuré (voir Levels). Facile et Moyen, eux, y restent
+// largement.
 func Rollouts(levelIdx, n int) int {
 	if levelIdx < 0 || levelIdx >= len(Levels) {
 		levelIdx = len(Levels) - 1

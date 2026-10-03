@@ -376,3 +376,45 @@ func TestBenchPolicy(t *testing.T) {
 		engineOpts(budget, 404, options{usePolicy: false}))
 	fmt.Printf("  politique locale %2d - tirage uniforme %2d\n", a, b)
 }
+
+// TestBenchBudget chiffre enfin ce que coûte ET ce que rapporte le seul levier
+// dont l'effet soit établi. Le projet savait qu'un QUADRUplement donne 46-2,
+// mais pas ce qu'un facteur modeste donne — or c'est le facteur modeste qui est
+// réellement jouable (voir les temps dans TestBenchSpeed).
+//
+// Deux précautions, apprises à la première tentative :
+//
+//   - le duel se joue à 4 000 et 6 000 simulations absolues, pas aux budgets
+//     réels des niveaux (40 000 à 60 000) : à ces budgets, 200 parties
+//     dépassent le délai d'un test. Le RAPPORT testé est le même (1,5), ce qui
+//     est la grandeur qui compte ;
+//
+//   - mais un rapport mesuré à budget faible surestime le gain à budget élevé,
+//     où la courbe s'aplatit. La mesure est donc un MAJORANT du bénéfice réel
+//     du passage à 750 par case. Si elle ne conclut déjà pas ici, elle ne
+//     conclura pas davantage aux budgets réels.
+//
+//     HEX_BENCH_BUDGET=1 [HEX_BENCH_GAMES=100] go test ./ai/ -run TestBenchBudget -v -count=1 -timeout 580s
+func TestBenchBudget(t *testing.T) {
+	if os.Getenv("HEX_BENCH_BUDGET") == "" {
+		t.Skip("définir HEX_BENCH_BUDGET=1 pour mesurer l'effet du budget")
+	}
+	const n = 9
+	games := 100
+	if v := os.Getenv("HEX_BENCH_GAMES"); v != "" {
+		if k, err := strconv.Atoi(v); err == nil && k > 0 {
+			games = k
+		}
+	}
+	// Le rapport testé est celui du passage envisagé : 500 → 750 par case.
+	const gros = 6000
+	const petit = 4000
+
+	fmt.Printf("\n===== effet du budget (rapport 1,5) — %d parties, plateau %d x %d =====\n",
+		games, n, n)
+	fmt.Printf("  (écart type : %.1f partie ; en dessous, c'est du bruit)\n", math.Sqrt(float64(games))/2)
+	fmt.Printf("  budget faible = MAJORANT du gain réel (la courbe s'aplatit en haut)\n")
+
+	a, b := duel(n, games, engine(gros, 505), engine(petit, 606))
+	fmt.Printf("  6000 simulations %2d - 4000 simulations %2d\n", a, b)
+}

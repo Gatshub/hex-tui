@@ -136,10 +136,34 @@ ADVERSAIRE
   quatre fois MOINS d'attention par case au grand plateau — un jeu nettement
   plus faible à niveau affiché égal.
 
-      Facile        25 sim./case    11×11 :  3 025 sim.   ~35 ms
-      Moyen        100 sim./case    11×11 : 12 100 sim.   ~125 ms
-      Difficile    500 sim./case    11×11 : 60 500 sim.   ~650 ms
-                                    13×13 : 84 500 sim.   ~1,1 s
+      Facile        25 sim./case    11×11 :   3 025 sim.   ~35 ms
+      Moyen        100 sim./case    11×11 :  12 100 sim.   ~125 ms
+      Difficile    750 sim./case    11×11 :  90 750 sim.   ~2,6 s (pire coup)
+                                    13×13 : 126 750 sim.   ~3,5 s (estimé)
+
+  POURQUOI DIFFICILE A ÉTÉ AUGMENTÉ (500 → 750 par case). Parce que c'est le
+  seul levier dont l'effet soit MESURÉ. Tout le reste — connexions virtuelles,
+  réutilisation d'arbre, politique de simulation — s'est révélé sans apport.
+  Mesure du rapport 1,5, à 9×9, sur 100 parties :
+
+      6 000 simulations   75  -  4 000 simulations   25      (5 σ)
+
+  Le rapport testé est bien celui du passage (500 → 750), mais à budget plus
+  bas : la courbe s'aplatit en haut, donc c'est un MAJORANT du gain réel. Il
+  est large, et la direction est certaine.
+
+  LE PRIX, ET IL EST RÉEL. Le projet s'était fixé de rester sous environ une
+  seconde par coup ; Difficile la dépasse maintenant (2,6 s sur le coup le
+  plus lent d'un 11×11, mesuré par TestBenchSpeed). C'est un arbitrage
+  assumé, pas un oubli : le temps d'attente est le prix de la seule force que
+  l'on sache acheter ici. Facile et Moyen sont INCHANGÉS — ils restent
+  rapides (89 ms et 330 ms).
+
+  Et c'est ce qui désigne la suite. Le coût d'une simulation a été mesuré à
+  ~28 µs, contre ~10 µs dans les chiffres historiques du projet : les temps
+  annoncés autrefois étaient optimistes. Aller plus vite rendrait le budget
+  moins cher, donc le moteur plus fort à temps égal — la vitesse est le
+  levier derrière le levier.
 
   La simulation est toujours concluante : sur un plateau plein, le théorème
   du Hex garantit qu'un camp a gagné, donc chaque tirage rend un verdict —
