@@ -185,9 +185,9 @@ TOUCHES
 --------------------------------------------------------------------
 
     ← →   ou  h l        ouest / est
-    ↑     ou  y          diagonale nord-ouest
+    ↑     ou  k  ou  y   diagonale nord-ouest
+    ↓     ou  j  ou  n   diagonale sud-est
     Maj+↑ ou  u          diagonale nord-est
-    ↓     ou  n          diagonale sud-est
     Maj+↓ ou  b          diagonale sud-ouest
     Entrée / Espace      poser une pierre
     Retour arrière       annuler le dernier coup
@@ -197,9 +197,20 @@ TOUCHES
     q                    quitter
     souris               1er clic : viser la case, 2e clic : poser
 
-  Note : sur un plateau en quinconce, les voisins diagonaux changent de
-  côté selon la parité de la ligne. Les six directions sont donc bien
-  six touches distinctes — c'est le piège classique du Hex.
+  j et k sont les pendants de ↓ et ↑, comme au menu et comme dans vi.
+  Attention : ce n'est PAS le hjkl complet de vi — sur un réseau hexagonal
+  il y a six directions, et h j k l n'en couvrent que quatre. Les deux
+  autres (nord-est, sud-ouest) n'ont pas d'équivalent au clavier : il faut
+  Maj+↑ / Maj+↓, ou u et b.
+
+  (j et k avaient été ANNONCÉS dans l'aide sans être implémentés : ils ne
+  faisaient rien. TestTouchesDeDeplacement part maintenant de la liste des
+  touches annoncées, et non des cas codés, pour que ce genre d'écart se voie.)
+
+  Note : depuis le passage au losange, les six directions sont les MÊMES
+  sur toutes les lignes. Il n'y a plus à se demander si l'on est sur une
+  ligne paire ou impaire avant de savoir où mène une diagonale — c'était
+  le piège du tracé en quinconce, et il a disparu.
 
 --------------------------------------------------------------------
 CHANGER DE NIVEAU SANS QUITTER LA PARTIE
@@ -237,7 +248,9 @@ CHANGER DE NIVEAU SANS QUITTER LA PARTIE
 CE QUI EST AFFICHÉ
 --------------------------------------------------------------------
 
-  - Plateau en losange, cases en quinconce (lignes impaires décalées).
+  - Plateau en LOSANGE, chaque ligne décalée d'un demi-pas (jamais en
+    quinconce : le décalage s'accumule, il ne revient pas en arrière).
+  - Trois damiers au choix, et coordonnées affichables (voir plus bas).
   - Curseur : fond bleu.
   - ⬢ Nord–Sud en cyan, ⬡ Est–Ouest en ambre.
   - À la victoire, la chaîne gagnante est mise en évidence en vert.

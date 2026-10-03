@@ -181,6 +181,48 @@ func TestMovementIsUniform(t *testing.T) {
 	}
 }
 
+// TestTouchesDeDeplacement confronte l'aide au comportement réel : CHAQUE
+// touche annoncée doit vraiment déplacer le curseur.
+//
+// Ce test existe à cause d'un vrai défaut : l'aide promettait « hjkl » alors
+// que le code ne gérait que h et l. j et k ne faisaient rien, en silence. Un
+// test qui se contente de vérifier ce que le code gère ne voit pas ce genre de
+// manque ; celui-ci part de la LISTE DES TOUCHES, pas des cas implémentés.
+func TestTouchesDeDeplacement(t *testing.T) {
+	cas := []struct {
+		nom string
+		msg tea.KeyMsg
+		dr  int
+		dc  int
+	}{
+		{"h", runeKey('h'), 0, -1},
+		{"l", runeKey('l'), 0, 1},
+		{"j", runeKey('j'), 1, 0},
+		{"k", runeKey('k'), -1, 0},
+		{"y", runeKey('y'), -1, 0},
+		{"n", runeKey('n'), 1, 0},
+		{"u", runeKey('u'), -1, 1},
+		{"b", runeKey('b'), 1, -1},
+		{"←", tea.KeyMsg{Type: tea.KeyLeft}, 0, -1},
+		{"→", tea.KeyMsg{Type: tea.KeyRight}, 0, 1},
+		{"↑", tea.KeyMsg{Type: tea.KeyUp}, -1, 0},
+		{"↓", tea.KeyMsg{Type: tea.KeyDown}, 1, 0},
+		{"Maj+↑", tea.KeyMsg{Type: tea.KeyShiftUp}, -1, 1},
+		{"Maj+↓", tea.KeyMsg{Type: tea.KeyShiftDown}, 1, -1},
+	}
+	for _, c := range cas {
+		m := testModel(120, 40)
+		m = m.start(9)
+		m.cursorR, m.cursorC = 4, 4
+		nm, _ := m.Update(c.msg)
+		got := nm.(Model)
+		if got.cursorR != 4+c.dr || got.cursorC != 4+c.dc {
+			t.Errorf("touche %s : curseur en (%d,%d), attendu (%d,%d)",
+				c.nom, got.cursorR, got.cursorC, 4+c.dr, 4+c.dc)
+		}
+	}
+}
+
 // Aucune ligne ne doit dépasser la largeur du terminal.
 func TestNoOverflow(t *testing.T) {
 	for _, w := range []int{50, 60, 80, 100, 120, 160} {

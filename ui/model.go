@@ -230,14 +230,16 @@ func (m Model) playKey(key string) (tea.Model, tea.Cmd) {
 		m.move("W")
 	case "l", "right":
 		m.move("E")
-	case "y", "up":
+	// j et k sont les pendants de ↓ et ↑ : comme au menu, et comme dans vi.
+	// L'aide les annonçait déjà alors que le code ne les gérait pas.
+	case "k", "y", "up":
 		m.move("NW")
+	case "j", "n", "down":
+		m.move("SE")
 	case "u", "shift+up":
 		m.move("NE")
 	case "b", "shift+down":
 		m.move("SW")
-	case "n", "down":
-		m.move("SE")
 	}
 	return m, nil
 }

@@ -273,12 +273,12 @@ func (m Model) legendLine() string {
 
 func (m Model) hintsLine() string {
 	full := [][2]string{
-		{"hjkl/←→", "déplacer"}, {"yu bn", "diagonales"}, {"Entrée", "poser"},
+		{"h j k l/←→↑↓", "déplacer"}, {"y u b n", "les 4 diagonales"}, {"Entrée", "poser"},
 		{"⌫", "annuler"}, {"s", "réglages"}, {"?", "aide"}, {"q", "quitter"},
 	}
 	short := [][2]string{
-		{"hjkl", "déplacer"}, {"Entrée", "poser"}, {"s", "réglages"},
-		{"?", "aide"}, {"q", "quitter"},
+		{"h j k l", "déplacer"}, {"y u b n", "diagonales"}, {"Entrée", "poser"},
+		{"s", "réglages"}, {"?", "aide"}, {"q", "quitter"},
 	}
 	mini := [][2]string{{"s", "réglages"}, {"q", "quitter"}}
 	build := func(items [][2]string) string {
@@ -299,9 +299,9 @@ func (m Model) hintsLine() string {
 func (m Model) helpLines() []string {
 	rows := [][2]string{
 		{"← →  ou  h l", "se déplacer d'est en ouest"},
-		{"↑  ou  y", "diagonale nord-ouest"},
+		{"↑  ou  k  ou  y", "diagonale nord-ouest"},
+		{"↓  ou  j  ou  n", "diagonale sud-est"},
 		{"Maj+↑  ou  u", "diagonale nord-est"},
-		{"↓  ou  n", "diagonale sud-est"},
 		{"Maj+↓  ou  b", "diagonale sud-ouest"},
 		{"Entrée / Espace", "poser une pierre"},
 		{"Retour arrière", "annuler le dernier coup"},
