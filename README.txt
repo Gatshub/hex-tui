@@ -23,11 +23,17 @@ Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
     - `go test ./...` passe : règles (hex/), moteur (ai/), interface (ui/).
     - Binaire installé et fonctionnel (~/.local/bin/hex-tui).
 
-  Le moteur, et ce qu'il vaut (mesuré, pas supposé) : recherche UCT
-  avec coups décisifs vérifiés exactement. Il bat largement l'ancien
-  algorithme (39-9 à travail égal). Les connexions virtuelles ont été
-  implémentées puis MESURÉES : 24-24, aucun apport — elles sont donc
-  désactivées par défaut, code et mesure conservés.
+  Le moteur, et ce qu'il vaut (mesuré, pas supposé) : recherche UCT, coups
+  décisifs vérifiés exactement, et budget de simulations proportionnel à la
+  surface du plateau. Il bat largement l'ancien algorithme (38-10 à travail
+  égal). Le budget est le levier dominant — quatre fois plus de simulations
+  donnent 46-2 — c'est donc lui qu'on a augmenté : environ 2 à 3,5 fois plus
+  de simulations par coup, selon le niveau et la taille du plateau.
+
+  Deux mécanismes ont été implémentés PUIS mesurés sans apport : les
+  connexions virtuelles (24-24, puis 32-16 — non concluant) et la
+  réutilisation de l'arbre de recherche (95-105 sur 200 parties). Tous deux
+  sont désactivés par défaut, code et mesure conservés.
 
   Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas) :
     - le moteur reste perfectible (politique de simulation guidée) ;
@@ -96,16 +102,26 @@ ADVERSAIRE
     1. gagner tout de suite si c'est possible ;
     2. sinon, bloquer la victoire immédiate de l'adversaire.
 
-  Les trois niveaux ne changent que le nombre de simulations par coup
-  (1 200 / 6 000 / 25 000), soit ~35 ms, ~180 ms et ~750 ms sur un 11×11.
+  Les trois niveaux changent le nombre de simulations par coup. Ce budget est
+  proportionnel à la SURFACE du plateau, et non fixe : un 13×13 compte 169
+  cases contre 49 pour un 7×7, et un budget constant donnait donc presque
+  quatre fois MOINS d'attention par case au grand plateau — un jeu nettement
+  plus faible à niveau affiché égal.
+
+      Facile        25 sim./case    11×11 :  3 025 sim.   ~35 ms
+      Moyen        100 sim./case    11×11 : 12 100 sim.   ~125 ms
+      Difficile    500 sim./case    11×11 : 60 500 sim.   ~650 ms
+                                    13×13 : 84 500 sim.   ~1,1 s
+
   La simulation est toujours concluante : sur un plateau plein, le théorème
   du Hex garantit qu'un camp a gagné, donc chaque tirage rend un verdict —
   jamais de « match nul » à gérer.
 
-    ATTENTION à ne pas confondre les deux budgétisations. L'ancien moteur
-    comptait des simulations PAR CASE CANDIDATE ; l'UCT compte des
-    simulations AU TOTAL. Un même nombre veut donc dire 100 fois moins de
-    travail. C'est le premier piège rencontré lors de la réécriture.
+    ATTENTION à ne pas confondre les budgétisations. L'ancien moteur comptait
+    ses simulations PAR CASE CANDIDATE ; l'UCT compte des simulations AU
+    TOTAL, et ici le budget est exprimé par case DU PLATEAU. Un même nombre
+    veut donc dire tout autre chose. C'est le premier piège rencontré lors de
+    la réécriture.
 
 --------------------------------------------------------------------
 LE MOTEUR : CE QU'IL VAUT, ET COMMENT C'EST MESURÉ
@@ -123,20 +139,27 @@ LE MOTEUR : CE QU'IL VAUT, ET COMMENT C'EST MESURÉ
        plateau (ai/board.go) ;
     2. la recherche UCT à la place du Monte-Carlo plat (ai/mcts.go).
 
-  Résultats mesurés (`HEX_BENCH=1`, et `HEX_BENCH_LONG=1` pour la version
-  longue à 48 parties, où l'écart type est de 3,5 parties — en dessous,
-  ce n'est que du bruit) :
+  Résultats mesurés (banc d'essai, plateau 9×9, 4 000 simulations par coup) :
 
-    UCT contre Monte-Carlo plat, à travail égal ....... 39 -  9
-    Contrôle : quatre fois plus de simulations ........ 46 -  2
-    Connexions virtuelles activées / désactivées ...... 24 - 24
+    Comparaison                                    parties    résultat
+    UCT contre Monte-Carlo plat, à travail égal        48      38 - 10
+    Contrôle : quatre fois plus de simulations         48      46 -  2
+    Connexions virtuelles : avec / sans                48      24 - 24
+    Connexions virtuelles : avec / sans (arbre repris) 48      32 - 16
+    Arbre réutilisé / reconstruit                     200      95 - 105
 
-  Lecture honnête : l'UCT est un gain massif et établi. Les CONNEXIONS
-  VIRTUELLES, en revanche, n'apportent RIEN dans l'usage qui en est fait
-  ici — c'est mesuré, pas supposé. Elles sont donc désactivées par défaut
-  (elles coûtent ~25 % de temps pour un gain nul) et le code reste en
-  place, avec `newAI(..., true)` pour les rallumer et le banc pour refaire
-  la mesure.
+  L'écart type vaut 3,5 partie à 48 parties et 7 à 200 : en dessous, ce n'est
+  que du bruit. Lecture honnête : l'UCT est un gain massif et établi ; le
+  BUDGET est le levier dominant (46-2), et c'est donc sur lui qu'on agit ; les
+  CONNEXIONS VIRTUELLES ne montrent rien de concluant (24-24, puis 32-16, soit
+  2,3 σ) ; la RÉUTILISATION DE L'ARBRE est neutre à légèrement négative
+  (95-105, moins d'un écart type).
+
+  Ces deux mécanismes sont donc DÉSACTIVÉS par défaut — c'est mesuré, pas
+  supposé — mais ils restent dans le code, testés, avec le banc d'essai pour
+  refaire la mesure (`newAI(..., options{useVC: true})` et
+  `options{reuse: true}`). C'est la différence entre « écarté après
+  vérification » et « oublié ».
 
   Pourquoi elles ne paient pas — et c'est chiffré, pas supposé : le
   raccourci ne se déclenche que sur 0,23 % des nœuds explorés (382 fois
@@ -242,11 +265,16 @@ FONCTIONNEMENT INTERNE
                     remontée) ; emplacement des connexions virtuelles
   ai/vc.go          Connexions virtuelles : détection des PONTS et
                     fermeture de proche en proche. Approximation mesurée
-  ai/ai.go          Interface publique : gagner/bloquer, ouverture au
-                    centre, puis recherche UCT
+  ai/ai.go          Interface publique et niveaux : gagner/bloquer,
+                    ouverture au centre, budget par case (Rollouts),
+                    puis recherche UCT
   ai/ai_test.go     Tests : victoire immédiate saisie, menace adverse
                     bloquée, reproductibilité par graine, plateau plein,
                     et 8 parties gagnées sur 8 contre un joueur aléatoire
+  ai/reuse_test.go  Tests de la réutilisation de l'arbre : elle a bien lieu
+                    quand la position descend du nœud retenu, et l'arbre est
+                    bien jeté en cas de divergence (annulation, nouvelle
+                    partie, coup adverse jamais envisagé)
   ai/vc_test.go     Test des ponts, et test qui MESURE et verrouille le
                     taux d'erreur de la fermeture par ponts (~0,44 %),
                     en la comparant à la valeur exacte du jeu par
@@ -316,19 +344,40 @@ DÉSINSTALLER
 --------------------------------------------------------------------
 
   [ ] Moteur : guider la POLITIQUE de simulation
-      But : le moteur joue au hasard pendant les simulations. Un vrai
+      But : pendant les simulations, le moteur joue au hasard. Un vrai
       moteur Hex répond aux menaces locales — c'est le principal levier
-      de force restant (bien plus que les connexions virtuelles).
+      de force restant, maintenant que le budget a été augmenté.
 
-      État actuel : UCT + coups décisifs exacts. Bat l'ancien moteur
-      39-9 à travail égal. Les connexions virtuelles sont implémentées
-      mais désactivées (mesurées à 24-24, aucun apport).
+      État actuel : UCT + coups décisifs exacts + budget proportionnel à
+      la surface. Bat l'ancien moteur 38-10 à travail égal.
 
       Piste : dans ai/board.go, playout() remplit au hasard. Essayer une
       heuristique de réponse locale (si l'adversaire menace un pont, y
       répondre), puis MESURER au banc d'essai contre la version actuelle.
+      La mesure tranche, pas l'intuition : jusqu'ici, deux mécanismes
+      « savants » se sont révélés sans apport.
 
-      Mesure à refaire : HEX_BENCH=1 go test ./ai/ -count=1
+      Mesure : HEX_BENCH=1 go test ./ai/ -run TestBench -count=1
+
+  [ ] Moteur : RAVE (statistiques AMAF)
+      But : combiner les statistiques de l'arbre avec celles des
+      simulations. C'est LE mécanisme qui fait progresser l'UCT quand
+      chaque coup est peu visité — donc précisément aux niveaux Facile et
+      Moyen, et sur les grands plateaux.
+
+      Piste : à la racine, compter pour chaque coup les victoires du camp
+      gagnant quand ce coup a été joué pendant la simulation (AMAF), puis
+      choisir en mélangeant taux réel et taux AMAF.
+
+  [ ] Moteur : restreindre les coups d'ouverture au voisinage
+      But : au tout début, une case loin de toute pierre est presque
+      toujours un coup perdu. L'écarter (rayon 2 le temps que le plateau
+      se garnisse) concentrerait le budget sur quelques cases utiles au
+      lieu de le diluer sur 121.
+
+      Piste : filtrer les cases libres de la racine par distance à la
+      plus proche pierre, avec repli sur toutes les cases si l'ensemble
+      est vide. À MESURER : c'est une heuristique, pas une évidence.
 
   [ ] Règle du gâteau (pie rule) pour équilibrer la partie
       But : au Hex, le premier joueur gagne avec un jeu correct. Le
@@ -341,3 +390,10 @@ DÉSINSTALLER
       But : remplacer l'approximation par ponts (0,44 % d'erreur) par un
       calcul exact, puis s'en servir pour GUIDER la simulation plutôt que
       pour couper l'arbre — c'est là qu'elles paient chez MoHex.
+
+  [ ] Moteur : réutilisation de l'arbre, à réévaluer
+      Mesurée à 95-105 sur 200 parties (neutre à légèrement négative), donc
+      désactivée. Mais la mesure a été faite sur un 9×9 à 4 000 simulations.
+      Sur un 13×13 à 84 500 simulations, l'arbre est bien plus profond et le
+      calcul bien mieux renseigné : il n'est pas exclu que la conclusion
+      s'inverse. À refaire avant de l'enterrer définitivement.

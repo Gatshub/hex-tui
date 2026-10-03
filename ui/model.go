@@ -56,6 +56,12 @@ type Model struct {
 	vsAI     bool
 	thinking bool
 
+	// Moteur de jeu, conservé pendant TOUTE la partie : il garde son arbre de
+	// recherche d'un coup à l'autre, ce qui le rend nettement plus fort à
+	// budget égal (la réflexion déjà faite n'est plus jetée). Recréé à chaque
+	// nouvelle partie.
+	engine *ai.AI
+
 	status      string
 	statusStyle lipgloss.Style
 }
@@ -318,6 +324,9 @@ func (m *Model) start(n int) Model {
 	m.showSettings = false
 	m.thinking = false
 	m.vsAI = m.opponentIdx == 1
+	// Moteur neuf pour chaque partie : nouveau tirage aléatoire, et arbre de
+	// recherche vide (celui de la partie précédente ne vaut plus rien).
+	m.engine = ai.New(ai.Rollouts(m.levelIdx, n), time.Now().UnixNano())
 	m.cursorR, m.cursorC = n-1, n-1
 	m.screen = scrPlay
 	m.setStatus(styleNordSud, "Nord–Sud commence")
@@ -401,12 +410,18 @@ func (m *Model) placeAt(r, c int) tea.Cmd {
 
 // aiThinking calcule le coup du moteur hors du fil d'affichage : l'interface
 // reste fluide même sur un grand plateau au niveau difficile.
-func (m Model) aiThinking() tea.Cmd {
+func (m *Model) aiThinking() tea.Cmd {
+	if m.engine == nil {
+		m.engine = ai.New(ai.Rollouts(m.levelIdx, m.board.N), time.Now().UnixNano())
+	}
+	// Un changement de niveau en cours de partie ne jette pas l'arbre déjà
+	// construit : seul le budget de la prochaine recherche change.
+	m.engine.SetRollouts(ai.Rollouts(m.levelIdx, m.board.N))
+
+	engine := m.engine
 	board := m.board.Clone()
 	p := m.turn
-	rollouts := ai.Levels[m.levelIdx].Rollouts
 	return func() tea.Msg {
-		engine := ai.New(rollouts, time.Now().UnixNano())
 		r, c, ok := engine.Move(board, p)
 		return aiMoveMsg{r: r, c: c, ok: ok}
 	}
@@ -431,6 +446,7 @@ func (m *Model) restart() {
 	m.winPath = nil
 	m.history = nil
 	m.thinking = false
+	m.engine = nil // le moteur reprendra un arbre neuf, avec une nouvelle graine
 	m.cursorR, m.cursorC = n-1, n-1
 	m.setStatus(styleMuted, "Plateau réinitialisé")
 }

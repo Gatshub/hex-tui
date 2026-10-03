@@ -35,6 +35,28 @@ type mctsNode struct {
 	wins   float64 // victoires du camp « player »
 }
 
+// newRootNode crée une racine pour la position décrite par fb, où c'est à turn
+// de jouer.
+func newRootNode(fb *fastBoard, turn uint8) *mctsNode {
+	return &mctsNode{
+		move:   -1,
+		player: other(turn),
+		turn:   turn,
+		moves:  fb.freeCells(nil),
+	}
+}
+
+// child renvoie l'enfant correspondant à un coup, ou nil s'il n'a pas encore
+// été développé.
+func (nd *mctsNode) child(move int32) *mctsNode {
+	for _, ch := range nd.children {
+		if ch.move == move {
+			return ch
+		}
+	}
+	return nil
+}
+
 func (nd *mctsNode) expanded() bool { return nd.nextMove >= len(nd.moves) }
 
 // selectChild applique la formule UCB1.
@@ -76,17 +98,16 @@ func withoutMove(moves []int32, skip int32) []int32 {
 	return out
 }
 
-// search mène « budget » simulations depuis la position root, où c'est à
-// toMove de jouer, et renvoie l'indice de la case choisie (-1 si aucune).
-func (a *AI) search(root *fastBoard, toMove uint8, budget int) int32 {
-	n := root.n
-	node0 := &mctsNode{
-		move:   -1,
-		player: other(toMove),
-		turn:   toMove,
-		moves:  root.freeCells(make([]int32, 0, n*n)),
-	}
-	if len(node0.moves) == 0 {
+// search mène « budget » simulations depuis le nœud root, dont la position est
+// décrite par rootFB (c'est à root.turn de jouer), et renvoie l'indice de la
+// case choisie (-1 s'il n'y a plus rien à jouer).
+//
+// L'arbre est MODIFIÉ en place : ses statistiques s'accumulent. C'est ce qui
+// permet de le conserver d'un coup à l'autre (voir AI.retain) au lieu de
+// repartir de zéro et de gaspiller tout le travail déjà fait.
+func (a *AI) search(root *mctsNode, rootFB *fastBoard, budget int) int32 {
+	n := rootFB.n
+	if len(root.moves) == 0 {
 		return -1
 	}
 
@@ -95,8 +116,8 @@ func (a *AI) search(root *fastBoard, toMove uint8, budget int) int32 {
 	vc := newVirtBoard(n)
 
 	for i := 0; i < budget; i++ {
-		fb.copyFrom(root)
-		nd := node0
+		fb.copyFrom(rootFB)
+		nd := root
 		winner := noStone
 
 		// 1. Descente dans la partie déjà explorée.
@@ -166,5 +187,5 @@ func (a *AI) search(root *fastBoard, toMove uint8, budget int) int32 {
 			}
 		}
 	}
-	return node0.bestMove()
+	return root.bestMove()
 }

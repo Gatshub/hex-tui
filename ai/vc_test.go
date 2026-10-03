@@ -140,7 +140,7 @@ func (s *solver) solve(ns, eo uint16, turn uint8) uint8 {
 func TestVCFiringRate(t *testing.T) {
 	const n = 9
 	const budget = 4000
-	e := newAI(budget, 12345, true)
+	e := newAI(budget, 12345, options{useVC: true, reuse: true})
 	b := hex.NewBoard(n)
 	turn := hex.NordSud
 	moves := 0

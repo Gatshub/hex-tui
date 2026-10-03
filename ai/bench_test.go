@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -21,21 +22,16 @@ import (
 
 type mover func(hex.Board, hex.Player) (int, int)
 
+// engine construit un moteur avec les réglages par défaut (arbre réutilisé).
 func engine(rollouts int, seed int64) mover {
-	e := New(rollouts, seed)
-	return func(b hex.Board, p hex.Player) (int, int) {
-		r, c, ok := e.Move(b, p)
-		if !ok {
-			return -1, -1
-		}
-		return r, c
-	}
+	return engineOpts(rollouts, seed, options{reuse: true})
 }
 
-// engineVC permet de comparer le moteur AVEC et SANS connexions virtuelles,
-// toutes choses égales par ailleurs.
-func engineVC(rollouts int, seed int64, useVC bool) mover {
-	e := newAI(rollouts, seed, useVC)
+// engineOpts permet de comparer deux variantes du moteur toutes choses égales
+// par ailleurs. C'est la seule façon honnête de savoir si un mécanisme apporte
+// quelque chose.
+func engineOpts(rollouts int, seed int64, o options) mover {
+	e := newAI(rollouts, seed, o)
 	return func(b hex.Board, p hex.Player) (int, int) {
 		r, c, ok := e.Move(b, p)
 		if !ok {
@@ -178,16 +174,47 @@ func TestBenchSpeed(t *testing.T) {
 		}
 		fmt.Printf("  plateau %2d x %2d :", n, n)
 		for _, budget := range []int{1000, 5000, 20000} {
-			e := New(budget, 12345)
 			start := time.Now()
 			const trials = 3
 			for k := 0; k < trials; k++ {
+				e := New(budget, 12345) // moteur neuf : arbre à construire
 				e.Move(b, hex.NordSud)
 			}
 			per := time.Since(start) / trials
 			fmt.Printf("   %6d sim. → %8s", budget, per.Round(time.Millisecond))
 		}
 		fmt.Println()
+	}
+
+	// Coût réel d'un coup EN COURS DE PARTIE : comme l'arbre est réutilisé, il
+	// grossit à chaque coup. C'est ce chiffre-là qui décide de la fluidité.
+	fmt.Println("\n===== coup le plus lent d'une partie (11x11) =====")
+	for i, lv := range Levels {
+		budget := Rollouts(i, 11)
+		b := hex.NewBoard(11)
+		e := New(budget, 999)
+		worst := time.Duration(0)
+		for mv := 0; mv < 60 && !b.IsFull(); mv++ {
+			p := hex.NordSud
+			if mv%2 == 1 {
+				p = hex.EstOuest
+			}
+			t0 := time.Now()
+			r, c, ok := e.Move(b, p)
+			d := time.Since(t0)
+			if !ok {
+				break
+			}
+			if d > worst {
+				worst = d
+			}
+			b.Set(r, c, p)
+			if b.Winner() != hex.None {
+				break
+			}
+		}
+		fmt.Printf("  %-10s → %8s (arbre accumulé)\n",
+			lv.Name, worst.Round(time.Millisecond))
 	}
 }
 
@@ -212,11 +239,48 @@ func TestBenchLong(t *testing.T) {
 	fmt.Printf("  UCT (%d sim.) contre Monte-Carlo plat (%d/case) : %2d - %2d\n",
 		budget, per, a, b)
 
-	c, d := duel(n, games, engineVC(budget, 33, true), engineVC(budget, 44, false))
+	c, d := duel(n, games,
+		engineOpts(budget, 33, options{useVC: true, reuse: true}),
+		engineOpts(budget, 44, options{useVC: false, reuse: true}))
 	fmt.Printf("  connexions virtuelles : avec %2d - sans %2d\n", c, d)
+
+	// LA comparaison qui compte pour la force : réutiliser l'arbre de
+	// recherche d'un coup à l'autre, ou le reconstruire à chaque fois ?
+	g, h := duel(n, games,
+		engineOpts(budget, 77, options{reuse: true}),
+		engineOpts(budget, 88, options{reuse: false}))
+	fmt.Printf("  arbre réutilisé : avec %2d - sans %2d\n", g, h)
 
 	e, f := duel(n, games, engine(budget, 55), engine(budget/4, 66))
 	fmt.Printf("  contrôle — 4x plus de simulations : %2d - %2d\n", e, f)
+}
+
+// TestBenchReuse tranche la question de la réutilisation de l'arbre, avec
+// assez de parties pour que le résultat ait un sens. À 48 parties l'écart type
+// vaut 3,5 : un effet de quelques parties y est invisible.
+//
+//	HEX_BENCH_REUSE=1 [HEX_BENCH_GAMES=200] go test ./ai/ -run TestBenchReuse -v -count=1
+func TestBenchReuse(t *testing.T) {
+	if os.Getenv("HEX_BENCH_REUSE") == "" {
+		t.Skip("définir HEX_BENCH_REUSE=1 pour mesurer la réutilisation")
+	}
+	const n = 9
+	const budget = 4000
+	games := 200
+	if v := os.Getenv("HEX_BENCH_GAMES"); v != "" {
+		if k, err := strconv.Atoi(v); err == nil && k > 0 {
+			games = k
+		}
+	}
+	fmt.Printf("\n===== réutilisation de l'arbre — %d parties, plateau %d x %d =====\n",
+		games, n, n)
+	fmt.Printf("  (écart type : %.1f partie ; en dessous, c'est du bruit)\n\n",
+		math.Sqrt(float64(games))/2)
+
+	a, b := duel(n, games,
+		engineOpts(budget, 101, options{reuse: true}),
+		engineOpts(budget, 202, options{reuse: false}))
+	fmt.Printf("  arbre réutilisé %2d - reconstruit %2d\n", a, b)
 }
 
 func TestBench(t *testing.T) {
@@ -229,11 +293,11 @@ func TestBench(t *testing.T) {
 		fmt.Printf("\n===== plateau %d x %d =====\n", n, n)
 
 		// A. Le moteur contre un joueur au hasard.
-		for _, lv := range Levels {
+		for i, lv := range Levels {
 			const games = 14
 			wins := 0
 			for g := 0; g < games; g++ {
-				e := engine(lv.Rollouts, int64(5000+g))
+				e := engine(Rollouts(i, n), int64(5000+g))
 				r := randomMover(int64(9000 + g))
 				var w hex.Player
 				if g%2 == 0 {
@@ -246,13 +310,13 @@ func TestBench(t *testing.T) {
 				}
 			}
 			fmt.Printf("  %-10s (%6d sim.) vs hasard : %2d/%d\n",
-				lv.Name, lv.Rollouts, wins, games)
+				lv.Name, Rollouts(i, n), wins, games)
 		}
 
 		// B. Les niveaux sont-ils ordonnés ?
-		sw, ww := duel(n, 14, engine(Levels[2].Rollouts, 777), engine(Levels[0].Rollouts, 888))
+		sw, ww := duel(n, 14, engine(Rollouts(2, n), 777), engine(Rollouts(0, n), 888))
 		fmt.Printf("  Difficile (%6d) contre Facile (%6d) : %2d - %2d\n",
-			Levels[2].Rollouts, Levels[0].Rollouts, sw, ww)
+			Rollouts(2, n), Rollouts(0, n), sw, ww)
 
 		// C. La comparaison qui compte : UCT contre Monte-Carlo plat, à
 		//    travail égal (même nombre de parties simulées au total).
@@ -268,7 +332,15 @@ func TestBench(t *testing.T) {
 
 		// E. Les connexions virtuelles apportent-elles quelque chose ?
 		//    Même moteur, même budget, seule la détection de ponts change.
-		c, d := duel(n, 14, engineVC(2000, 555, true), engineVC(2000, 666, false))
+		c, d := duel(n, 14,
+			engineOpts(2000, 555, options{useVC: true, reuse: true}),
+			engineOpts(2000, 666, options{useVC: false, reuse: true}))
 		fmt.Printf("  avec connexions virtuelles contre sans : %2d - %2d\n", c, d)
+
+		// F. Réutiliser l'arbre de recherche d'un coup à l'autre.
+		g, h := duel(n, 14,
+			engineOpts(2000, 777, options{reuse: true}),
+			engineOpts(2000, 888, options{reuse: false}))
+		fmt.Printf("  arbre réutilisé contre reconstruit : %2d - %2d\n", g, h)
 	}
 }
