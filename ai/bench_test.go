@@ -85,7 +85,7 @@ func flatMover(perCandidate int, seed int64) mover {
 				scratch.copyFrom(fb)
 				scratch.place(r, c, me)
 				order = scratch.freeCells(order)
-				if scratch.playout(order, opp, rng) == me {
+				if scratch.playout(order, opp, rng, false) == me {
 					score++
 				}
 			}
@@ -343,4 +343,36 @@ func TestBench(t *testing.T) {
 			engineOpts(2000, 888, options{reuse: false}))
 		fmt.Printf("  arbre réutilisé contre reconstruit : %2d - %2d\n", g, h)
 	}
+}
+
+// TestBenchPolicy tranche la question de la POLITIQUE de simulation : les
+// parties aléatoires tirent-elles mieux en préférant les cases qui touchent
+// déjà une pierre, au lieu de jouer uniformément ?
+//
+// C'est le levier le plus prometteur de la feuille de route HexWiki (niveau
+// 300), et le seul qui touche CHAQUE simulation — contrairement aux connexions
+// virtuelles, qui ne se déclenchent que sur 0,3 % des nœuds.
+//
+//	HEX_BENCH_POLICY=1 [HEX_BENCH_GAMES=200] go test ./ai/ -run TestBenchPolicy -v -count=1 -timeout 580s
+func TestBenchPolicy(t *testing.T) {
+	if os.Getenv("HEX_BENCH_POLICY") == "" {
+		t.Skip("définir HEX_BENCH_POLICY=1 pour mesurer la politique")
+	}
+	const n = 9
+	const budget = 4000
+	games := 200
+	if v := os.Getenv("HEX_BENCH_GAMES"); v != "" {
+		if k, err := strconv.Atoi(v); err == nil && k > 0 {
+			games = k
+		}
+	}
+	fmt.Printf("\n===== politique de simulation — %d parties, plateau %d x %d =====\n",
+		games, n, n)
+	fmt.Printf("  (écart type : %.1f partie ; en dessous, c'est du bruit)\n\n",
+		math.Sqrt(float64(games))/2)
+
+	a, b := duel(n, games,
+		engineOpts(budget, 303, options{usePolicy: true}),
+		engineOpts(budget, 404, options{usePolicy: false}))
+	fmt.Printf("  politique locale %2d - tirage uniforme %2d\n", a, b)
 }

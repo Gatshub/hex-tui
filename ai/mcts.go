@@ -176,7 +176,7 @@ func (a *AI) search(root *mctsNode, rootFB *fastBoard, budget int) int32 {
 		// 3. Simulation aléatoire jusqu'à ce qu'un camp se relie.
 		if winner == noStone {
 			order = fb.freeCells(order)
-			winner = fb.playout(order, nd.turn, a.rng)
+			winner = fb.playout(order, nd.turn, a.rng, a.policy)
 		}
 
 		// 4. Remontée des résultats.

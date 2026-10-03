@@ -35,6 +35,25 @@ Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
   réutilisation de l'arbre de recherche (95-105 sur 200 parties). Tous deux
   sont désactivés par défaut, code et mesure conservés.
 
+  Un troisième les a rejoints : la POLITIQUE DE SIMULATION. Les parties
+  aléatoires peuvent préférer les cases qui touchent déjà une pierre au
+  lieu de tirer uniformément (options{usePolicy: true}). Mesure sur
+  200 parties à 9 x 9, budget 4 000, écart type 7,1 :
+
+      politique locale 91  -  tirage uniforme 109
+
+  1,27 σ, et du côté défavorable. Ce n'est pas une preuve que la
+  politique NUIT, c'est l'absence de preuve qu'elle aide — le seuil du
+  projet est 2 σ, et on en est loin. Désactivée par défaut elle aussi.
+
+  Ce que ces trois résultats dessinent, et c'est plus utile que chacun
+  pris séparément : ce moteur convertit le TEMPS DE CALCUL en force de
+  façon très fiable (quadrupler le budget donne 46-2), et la finesse
+  ajoutée pas du tout. Le levier qui marche est le budget ; les
+  « mécanismes savants » essayés jusqu'ici ne payent pas. Une piste
+  sérieuse est donc d'aller plus vite — rendre la simulation moins chère
+  revient à augmenter le budget.
+
   Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas, et la note
   STRATEGIE.md pour l'ordre recommandé) :
     - la détection de connexions ne connaît qu'UN template (celui de
@@ -505,21 +524,16 @@ DÉSINSTALLER
       À ne tenter qu'après les templates, et avec un test exhaustif
       (4×4 puis 5×5) qui vérifie qu'aucun coup gagnant n'est élagué.
 
-  [ ] Moteur : guider la POLITIQUE de simulation
-      But : pendant les simulations, le moteur joue au hasard. Un vrai
-      moteur Hex répond aux menaces locales — c'est le principal levier
-      de force restant, maintenant que le budget a été augmenté.
+  [ ] Moteur : guider la POLITIQUE de simulation — MESURÉ, SANS APPORT
+      200 parties à 9 x 9, budget 4 000 : politique locale 91 contre
+      tirage uniforme 109, soit 1,27 σ du côté défavorable. Désactivée
+      par défaut ; le code reste (options{usePolicy: true}) et le banc
+      d'essai aussi : HEX_BENCH_POLICY=1 go test ./ai/ -run TestBenchPolicy
 
-      État actuel : UCT + coups décisifs exacts + budget proportionnel à
-      la surface. Bat l'ancien moteur 38-10 à travail égal.
-
-      Piste : dans ai/board.go, playout() remplit au hasard. Essayer une
-      heuristique de réponse locale (si l'adversaire menace un pont, y
-      répondre), puis MESURER au banc d'essai contre la version actuelle.
-      La mesure tranche, pas l'intuition : jusqu'ici, deux mécanismes
-      « savants » se sont révélés sans apport.
-
-      Mesure : HEX_BENCH=1 go test ./ai/ -run TestBench -count=1
+      Idée non essayée : une politique plus fine, qui répond aux menaces
+      LOCALES DE LA DERNIÈRE PIERRE plutôt que « près de n'importe quelle
+      pierre ». C'est la vraie intuition de la feuille de route (niveau
+      300), et elle n'a pas été testée — seulement la version grossière.
 
   [ ] Moteur : RAVE (statistiques AMAF)
       But : combiner les statistiques de l'arbre avec celles des

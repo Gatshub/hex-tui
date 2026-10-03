@@ -73,8 +73,9 @@ func Rollouts(levelIdx, n int) int {
 // banc d'essai puisse comparer deux variantes à budget égal — c'est la seule
 // façon honnête de savoir si un mécanisme apporte quelque chose.
 type options struct {
-	useVC bool // raccourcis par connexions virtuelles (mesurés : sans effet)
-	reuse bool // conserver l'arbre de recherche d'un coup à l'autre
+	useVC     bool // raccourcis par connexions virtuelles (mesurés : sans effet)
+	reuse     bool // conserver l'arbre de recherche d'un coup à l'autre
+	usePolicy bool // politique de tirage locale dans les simulations (mesurée : sans effet)
 }
 
 // AI est le moteur de jeu.
@@ -87,6 +88,7 @@ type AI struct {
 	rng      *rand.Rand
 	useVC    bool
 	reuse    bool
+	policy   bool
 
 	// Arbre conservé entre deux coups. root est le nœud de la position
 	// courante, rootFB sa description (cases + union-find). Les deux valent
@@ -131,6 +133,7 @@ func newAI(rollouts int, seed int64, o options) *AI {
 		rng:      rand.New(rand.NewSource(seed)),
 		useVC:    o.useVC,
 		reuse:    o.reuse,
+		policy:   o.usePolicy,
 	}
 }
 

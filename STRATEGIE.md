@@ -168,11 +168,27 @@ E. POLITIQUE DE SIMULATION GUIDÉE
    ce qui ne l'est pas, pour éviter de défendre l'indéfendable ». C'est
    la phrase qui vise le plus juste pour un moteur Monte-Carlo.
 
-   Nos parties aléatoires jouent uniformément au hasard. La
-   littérature est constante : c'est LÀ que se gagne la force d'un
-   moteur de Hex. Gain le plus élevé des cinq ; travail le plus élevé ;
-   risque de justesse nul (une politique ne fait qu'orienter, elle
-   n'élimine rien).
+   Nos parties aléatoires jouent uniformément au hasard. La littérature
+   est constante : c'est LÀ que se gagne la force d'un moteur de Hex.
+   Gain attendu le plus élevé des cinq ; travail le plus élevé ; risque
+   de justesse nul (une politique oriente, elle n'élimine rien).
+
+   MESURÉ, et le résultat est négatif. La variante essayée : préférer
+   les cases qui touchent déjà une pierre (deux fois sur trois) au lieu
+   de tirer uniformément. 200 parties à 9 x 9, budget 4 000 :
+
+       politique locale 91  -  tirage uniforme 109   (1,27 σ)
+
+   Pas d'apport. Le mécanisme est désactivé par défaut, code et banc
+   d'essai conservés (HEX_BENCH_POLICY=1).
+
+   Ce qu'il faut en retenir, au-delà de ce levier : avec trois résultats
+   négatifs d'affilée (connexions virtuelles, réutilisation d'arbre,
+   politique), le motif est net. Ce moteur convertit le TEMPS DE CALCUL
+   en force très fidèlement — quadrupler le budget donne 46-2 — et la
+   finesse ajoutée pas du tout. La question utile n'est donc peut-être
+   pas « quel mécanisme savant ajouter » mais « comment aller plus
+   vite », puisque aller plus vite revient à augmenter le budget.
 
 --------------------------------------------------------------------
 6. ORDRE RECOMMANDÉ
@@ -181,8 +197,9 @@ E. POLITIQUE DE SIMULATION GUIDÉE
   1. A (templates) — prolonge du code déjà écrit et déjà testé, risque
      de justesse maîtrisé par le test exhaustif existant.
   2. C (capturé/dominé) — règles locales, sûres, peu de code.
-  3. E (politique) — le vrai levier de force, à faire quand on a du
-     temps pour mesurer sérieusement.
+  3. E (politique) — MESURÉE, sans apport (91-109). Le vrai levier
+     annoncé par la littérature ne l'est pas ici ; voir le motif des
+     trois résultats négatifs, plus haut.
   4. B (mustplay) — seulement une fois la détection conservatrice
      prouvée. Le plus fort, mais le seul qui puisse perdre une partie
      gagnée en silence.

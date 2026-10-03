@@ -167,13 +167,84 @@ func (fb *fastBoard) freeCells(dst []int32) []int32 {
 	return dst
 }
 
-// playout remplit les cases libres au hasard en alternant les coups, et
-// renvoie le vainqueur. S'arrête dès qu'un camp relie ses bords.
-func (fb *fastBoard) playout(order []int32, turn uint8, rng *rand.Rand) uint8 {
-	rng.Shuffle(len(order), func(i, j int) {
-		order[i], order[j] = order[j], order[i]
-	})
-	for _, idx := range order {
+// touches dit si la case idx touche au moins une pierre déjà posée. Sert à la
+// politique de simulation : une case isolée est presque toujours un coup perdu.
+func (fb *fastBoard) touches(idx int32) bool {
+	r, c := int(idx)/fb.n, int(idx)%fb.n
+	for k := 0; k < 6; k++ {
+		nr, nc := r+hex.DR[k], c+hex.DC[k]
+		if nr >= 0 && nr < fb.n && nc >= 0 && nc < fb.n &&
+			fb.cells[nr*fb.n+nc] != noStone {
+			return true
+		}
+	}
+	return false
+}
+
+// playout remplit les cases libres en alternant les coups, et renvoie le
+// vainqueur. S'arrête dès qu'un camp relie ses bords.
+//
+// Deux politiques de tirage :
+//
+//	sans politique — les cases libres sont mélangées et jouées dans cet ordre.
+//	  Chaque case a la même chance, y compris celles qui sont loin de toute
+//	  pierre et qui ne peuvent rien décider.
+//
+//	avec politique — les cases qui TOUCHENT déjà une pierre sont séparées des
+//	  autres, et tirées deux fois sur trois. L'idée vient du niveau 300 de la
+//	  feuille de route HexWiki (« reconnaître ce qui est connecté et ce qui ne
+//	  l'est pas, pour éviter de défendre l'indéfendable ») : un coup au milieu
+//	  d'une région vide ne défend ni n'attaque rien.
+//
+// La partition se fait EN PLACE dans `order` (aucune allocation : c'est la
+// boucle la plus chaude du moteur), et les cases proches sont évaluées une
+// seule fois, au début de la simulation. C'est une approximation assumée.
+func (fb *fastBoard) playout(order []int32, turn uint8, rng *rand.Rand, policy bool) uint8 {
+	shuffle := func(s []int32) {
+		rng.Shuffle(len(s), func(i, j int) { s[i], s[j] = s[j], s[i] })
+	}
+
+	if !policy {
+		shuffle(order)
+		for _, idx := range order {
+			r, c := int(idx)/fb.n, int(idx)%fb.n
+			fb.place(r, c, turn)
+			if fb.connected(turn) {
+				return turn
+			}
+			turn = other(turn)
+		}
+		return noStone
+	}
+
+	// Partition en place : les cases proches d'une pierre au début, les
+	// isolées ensuite.
+	k := 0
+	for i := range order {
+		if fb.touches(order[i]) {
+			order[i], order[k] = order[k], order[i]
+			k++
+		}
+	}
+	near, far := order[:k], order[k:]
+	shuffle(near)
+	shuffle(far)
+
+	for len(near)+len(far) > 0 {
+		var idx int32
+		// Deux fois sur trois dans les cases proches, et toujours s'il n'en
+		// reste plus que là.
+		if len(near) > 0 && (len(far) == 0 || rng.Intn(3) != 0) {
+			j := rng.Intn(len(near))
+			idx = near[j]
+			near[j] = near[len(near)-1]
+			near = near[:len(near)-1]
+		} else {
+			j := rng.Intn(len(far))
+			idx = far[j]
+			far[j] = far[len(far)-1]
+			far = far[:len(far)-1]
+		}
 		r, c := int(idx)/fb.n, int(idx)%fb.n
 		fb.place(r, c, turn)
 		if fb.connected(turn) {
