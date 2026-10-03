@@ -380,7 +380,7 @@ FONCTIONNEMENT INTERNE
                     bien jeté en cas de divergence (annulation, nouvelle
                     partie, coup adverse jamais envisagé)
   ai/vc_test.go     Test des ponts, et test qui MESURE et verrouille le
-                    taux d'erreur de la fermeture par ponts (~0,44 %),
+                    taux d'erreur de la fermeture par ponts (0,58 % —
                     en la comparant à la valeur exacte du jeu par
                     recherche exhaustive sur un petit plateau
   ai/bench_test.go  Banc d'essai : vitesse, niveaux, UCT contre plat,

@@ -77,8 +77,9 @@ deux familles qui ne se traitent pas du tout de la même façon.
 Ce qu'on a déjà, et qui correspond à quel niveau de la feuille :
 
   pont (bridge) ................. implémenté (ai/vc.go), MESURÉ SANS GAIN
-                                   (VC activées 24-24 contre 32-16, seuil
-                                   de déclenchement 0,23 % des nœuds)
+                                   (VC activées 24-24 contre 32-16 ; le
+                                   raccourci se déclenchait sur 0,23 % des
+                                   nœuds — 0,355 % depuis le template)
   adjacence = connexion ......... oui (testé)
   coups décisifs exacts ......... oui (victoire immédiate, blocage)
   ziggurat ...................... NON (le suivant sur la liste)
