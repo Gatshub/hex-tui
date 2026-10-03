@@ -333,37 +333,24 @@ func (m *Model) start(n int) Model {
 	return *m
 }
 
-// step traduit une direction en déplacement (dr, dc), selon la parité de la
-// ligne : sur un plateau en quinconce, les voisins diagonaux changent de côté.
+// dirIndex relie les six directions du clavier aux six directions du paquet hex.
+// L'ordre est celui, cyclique, de hex.DR / hex.DC : est, sud-est, sud-ouest,
+// ouest, nord-ouest, nord-est.
+//
+// Le curseur n'a donc plus sa propre table de directions : il n'existe plus
+// qu'une seule définition des voisins dans tout le programme. Auparavant il y
+// en avait trois (règles, moteur, interface), et elles avaient divergé.
+var dirIndex = map[string]int{
+	"E": 0, "SE": 1, "SW": 2, "W": 3, "NW": 4, "NE": 5,
+}
+
+// step traduit une direction en déplacement (dr, dc).
 func (m Model) step(dir string) (int, int) {
-	odd := m.cursorR%2 == 1
-	switch dir {
-	case "W":
-		return 0, -1
-	case "E":
-		return 0, 1
-	case "NW":
-		if odd {
-			return -1, 0
-		}
-		return -1, -1
-	case "NE":
-		if odd {
-			return -1, 1
-		}
-		return -1, 0
-	case "SW":
-		if odd {
-			return 1, 0
-		}
-		return 1, -1
-	case "SE":
-		if odd {
-			return 1, 1
-		}
-		return 1, 0
+	k, ok := dirIndex[dir]
+	if !ok {
+		return 0, 0
 	}
-	return 0, 0
+	return hex.DR[k], hex.DC[k]
 }
 
 func (m *Model) move(dir string) {

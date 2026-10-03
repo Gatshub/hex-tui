@@ -1,13 +1,32 @@
-// Package hex implémente les règles du jeu de Hex sur un plateau en losange
+// Package hex implémente les règles du jeu de Hex sur un plateau en LOSANGE
 // n x n. Logique pure, sans dépendance UI.
 //
-// Coordonnées : lignes « en quinconce » (odd-r offset). La case (r, c) a six
-// voisins ; l'emplacement à l'écran est calculé par la vue, pas ici.
+// Coordonnées : (ligne, colonne), 0 en haut à gauche. La case (r,c) est le
+// r-ième losange de la ligne r. Chaque ligne est décalée d'un DEMI-PAS vers la
+// droite par rapport à celle du dessus : le décalage s'accumule, il ne revient
+// jamais en arrière. C'est ce qui donne le losange de l'échiquier de Hex — le
+// décalage en quinconce (une ligne sur deux), lui, donnerait un rectangle à
+// bords dentelés.
+//
+// Conséquence sur l'adjacence : les six voisins sont les MÊMES pour toutes les
+// cases, sans dépendre de la parité de la ligne. Voir DR/DC.
 //
 // Les deux joueurs relient deux bords opposés :
 //   - NordSud  relie la première ligne (r=0) à la dernière (r=n-1)
 //   - EstOuest relie la première colonne (c=0) à la dernière (c=n-1)
 package hex
+
+// Les six directions, en ORDRE CYCLIQUE : est, sud-est, sud-ouest, ouest,
+// nord-ouest, nord-est.
+//
+// L'ordre n'est pas cosmétique : deux directions séparées d'un cran dans cet
+// ordre sont à deux cases l'une de l'autre et partagent un voisin commun. Le
+// moteur s'en sert pour détecter les ponts (voir ai/vc.go), et l'interface pour
+// les six déplacements du curseur. Une seule source de vérité pour les trois.
+var (
+	DR = [6]int{0, 1, 1, 0, -1, -1}
+	DC = [6]int{1, 0, -1, -1, 0, 1}
+)
 
 // Player identifie un camp.
 type Player int8
@@ -80,20 +99,16 @@ func (b *Board) Clear(r, c int) {
 	}
 }
 
-// Neighbors renvoie les cases voisines existantes de (r,c), pour un plateau en
-// quinconce (lignes impaires décalées vers la droite). C'est l'adjacence
-// standard du Hex : est/ouest sur la même ligne, plus quatre diagonales.
+// Neighbors renvoie les cases voisines existantes de (r,c).
+//
+// Les six directions sont les MÊMES pour toutes les cases : est/ouest sur la
+// même ligne, plus quatre diagonales. Aucune n'utilise la parité de la ligne —
+// c'est la conséquence directe du losange, où chaque ligne est décalée d'un
+// demi-pas dans le MÊME sens.
 func (b Board) Neighbors(r, c int) [][2]int {
-	dr := [6]int{-1, -1, 0, 0, 1, 1}
-	var dc [6]int
-	if r%2 == 1 {
-		dc = [6]int{0, 1, -1, 1, 0, 1}
-	} else {
-		dc = [6]int{-1, 0, -1, 1, -1, 0}
-	}
 	out := make([][2]int, 0, 6)
-	for i := 0; i < 6; i++ {
-		nr, nc := r+dr[i], c+dc[i]
+	for k := 0; k < 6; k++ {
+		nr, nc := r+DR[k], c+DC[k]
 		if b.InBounds(nr, nc) {
 			out = append(out, [2]int{nr, nc})
 		}
@@ -219,11 +234,15 @@ func (b Board) WinningCells(p Player) [][2]int {
 
 // String rend le plateau en texte, pour les diagnostics et les tests.
 // X : Nord–Sud, O : Est–Ouest, . : case libre.
+//
+// Chaque ligne est décalée d'un demi-pas (un caractère, la case en faisant
+// deux) vers la droite : le losange apparaît, et deux cases voisines se
+// touchent réellement à l'écran.
 func (b Board) String() string {
 	out := make([]rune, 0, b.N*(3*b.N+2))
 	for r := 0; r < b.N; r++ {
-		if r%2 == 1 {
-			out = append(out, ' ', ' ')
+		for i := 0; i < r; i++ {
+			out = append(out, ' ')
 		}
 		for c := 0; c < b.N; c++ {
 			if c > 0 {

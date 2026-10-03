@@ -12,10 +12,14 @@ import (
 // qu'à 4 cases ? ». Non : les cases INTÉRIEURES en ont 6. Seules les cases de
 // bord en ont moins, et c'est inévitable — un bord n'a pas de voisin au-delà.
 //
-// Ce test documente aussi la conséquence du tracé en QUINCONCE (odd-r) retenu
-// ici : la région dessinée est un rectangle à bords DENTELÉS, pas le losange de
-// l'échiquier de Hex. Les degrés de bord s'en ressentent (voir la répartition
-// affichée : ils devraient être réguliers le long d'un bord droit).
+// Ce test documente aussi la FORME du plateau : un losange. Deux signatures
+// mesurables la distinguent du tracé en quinconce (rectangle à bords dentelés)
+// qui était utilisé avant :
+//
+//   - les quatre coins sont symétriques deux à deux (2, 3, 3, 2) ;
+//   - toutes les cases de bord, hors coins, ont exactement 4 voisins.
+//
+// Si quelqu'un remet une géométrie en quinconce, ces deux contrôles échouent.
 func TestNeighborDegrees(t *testing.T) {
 	const n = 9
 	b := NewBoard(n)
@@ -62,17 +66,37 @@ func TestNeighborDegrees(t *testing.T) {
 		}
 	}
 
-	// Les quatre coins : dans un tracé en quinconce, ils ne sont pas
-	// symétriques deux à deux (deux en ont 2, deux en ont 3). C'est la
-	// signature du bord dentelé. On le VERROUILLE pour que tout changement de
-	// géométrie fasse échouer ce test et oblige à se poser la question.
+	// Les quatre coins d'un LOSANGE forment deux paires symétriques : 2, 3, 3, 2.
+	// C'est la signature de la forme, et ce qui la distingue du tracé en
+	// quinconce (qui donnait 2, 3, 2, 3 : pas de symétrie, bord dentelé).
 	coins := map[[2]int]int{
-		{0, 0}: 2, {0, n - 1}: 3, {n - 1, 0}: 2, {n - 1, n - 1}: 3,
+		{0, 0}: 2, {0, n - 1}: 3, {n - 1, 0}: 3, {n - 1, n - 1}: 2,
 	}
 	for rc, want := range coins {
 		if got := degs[rc]; got != want {
-			t.Errorf("coin (%d,%d) : %d voisins, attendu %d (bord dentelé)",
+			t.Errorf("coin (%d,%d) : %d voisins, attendu %d (losange)",
 				rc[0], rc[1], got, want)
+		}
+	}
+
+	// Toute case de bord (hors coin) a exactement 4 voisins : c'est la marque
+	// d'un bord DROIT. Un bord en dents de scie en produirait aussi des 3 et
+	// des 5, comme le tracé en quinconce.
+	edges := map[int]int{}
+	for r := 0; r < n; r++ {
+		for c := 0; c < n; c++ {
+			if r == 0 || r == n-1 || c == 0 || c == n-1 {
+				if (r == 0 || r == n-1) && (c == 0 || c == n-1) {
+					continue // coins, déjà vérifiés
+				}
+				edges[degs[[2]int{r, c}]]++
+			}
+		}
+	}
+	for d, count := range edges {
+		if d != 4 {
+			t.Errorf("%d cases de bord ont %d voisins au lieu de 4 "+
+				"(bord non droit)", count, d)
 		}
 	}
 
@@ -81,6 +105,7 @@ func TestNeighborDegrees(t *testing.T) {
 		sum += d
 	}
 	fmt.Printf("  cases intérieures à 6 voisins : %d sur %d\n", inter, n*n)
+	fmt.Printf("  cases de bord à 4 voisins : %d\n", edges[4])
 	fmt.Printf("  somme des degrés : %d, soit %d arêtes\n", sum, sum/2)
-	fmt.Printf("  coins : 2,3,2,3 — asymétrie = bord dentelé\n")
+	fmt.Printf("  coins : 2,3,3,2 — symétriques, donc losange\n")
 }

@@ -29,12 +29,9 @@ const (
 	eoStone              // pierre Est–Ouest
 )
 
-// Voisins en coordonnées « odd-r » (lignes impaires décalées vers la droite).
-var (
-	nbDR     = [6]int{-1, -1, 0, 0, 1, 1}
-	nbDCEven = [6]int{-1, 0, -1, 1, -1, 0}
-	nbDCOdd  = [6]int{0, 1, -1, 1, 0, 1}
-)
+// L'adjacence est celle du paquet hex (hex.DR / hex.DC) : une seule source de
+// vérité pour les règles, le moteur et l'affichage. Auparavant elle était
+// recopiée ici, et la version recopiée avait divergé.
 
 // fastBoard est un plateau de jeu optimisé pour les simulations.
 type fastBoard struct {
@@ -122,12 +119,8 @@ func (fb *fastBoard) place(r, c int, p uint8) {
 	i := int32(r*fb.n + c)
 	fb.cells[i] = p
 
-	dc := &nbDCEven
-	if r&1 == 1 {
-		dc = &nbDCOdd
-	}
 	for k := 0; k < 6; k++ {
-		nr, nc := r+nbDR[k], c+dc[k]
+		nr, nc := r+hex.DR[k], c+hex.DC[k]
 		if nr < 0 || nr >= fb.n || nc < 0 || nc >= fb.n {
 			continue
 		}

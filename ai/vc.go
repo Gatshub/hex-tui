@@ -1,5 +1,7 @@
 package ai
 
+import "hex-tui/hex"
+
 // Connexions virtuelles, la connaissance du jeu qui manquait au moteur.
 //
 // Un PONT relie deux pierres distantes de deux cases lorsque les deux cases
@@ -19,15 +21,14 @@ package ai
 // donc comme d'un GUIDE (ordonnancement, arrêt anticipé des simulations), et
 // non comme d'une preuve — c'est mesuré et documenté dans les tests.
 
-// Voisins en ORDRE CYCLIQUE autour d'une case. Indispensable pour les ponts :
-// deux voisins séparés d'un cran dans cet ordre sont à deux pas l'un de
-// l'autre, et partagent donc un second voisin commun.
-var (
-	cycDREven = [6]int{0, 1, 1, 0, -1, -1}
-	cycDCEven = [6]int{1, 0, -1, -1, -1, 0}
-	cycDROdd  = [6]int{0, 1, 1, 0, -1, -1}
-	cycDCOdd  = [6]int{1, 1, 0, -1, 0, 1}
-)
+// L'ordre cyclique des six directions est celui de hex.DR / hex.DC : est,
+// sud-est, sud-ouest, ouest, nord-ouest, nord-est.
+//
+// Il est INDISPENSABLE ici : deux directions séparées d'un cran dans cet ordre
+// sont à deux cases l'une de l'autre et partagent un voisin commun. C'est
+// exactement la définition d'un pont, et le losange rend cet ordre identique
+// pour toutes les cases (le tracé en quinconce, lui, le faisait dépendre de la
+// parité de la ligne).
 
 // virtBoard entretient les liaison d'un camp : adjacence directe et ponts.
 // Les quatre derniers nœuds représentent les bords du plateau.
@@ -87,17 +88,13 @@ func (v *virtBoard) build(fb *fastBoard, p uint8) {
 
 	// 1. Adjacence directe et raccordement aux bords.
 	for r := 0; r < n; r++ {
-		dc := &nbDCEven
-		if r&1 == 1 {
-			dc = &nbDCOdd
-		}
 		for c := 0; c < n; c++ {
 			if fb.cells[r*n+c] != p {
 				continue
 			}
 			i := int32(r*n + c)
 			for k := 0; k < 6; k++ {
-				nr, nc := r+nbDR[k], c+dc[k]
+				nr, nc := r+hex.DR[k], c+hex.DC[k]
 				if nr < 0 || nr >= n || nc < 0 || nc >= n {
 					continue
 				}
@@ -126,10 +123,7 @@ func (v *virtBoard) build(fb *fastBoard, p uint8) {
 	// 2. Ponts : deux pierres du camp séparées d'un cran dans l'ordre
 	//    cyclique, avec les DEUX cases intermédiaires libres.
 	for r := 0; r < n; r++ {
-		dr, dc := &cycDREven, &cycDCEven
-		if r&1 == 1 {
-			dr, dc = &cycDROdd, &cycDCOdd
-		}
+		dr, dc := &hex.DR, &hex.DC
 		for c := 0; c < n; c++ {
 			if fb.cells[r*n+c] != noStone {
 				continue // la case « v » du pont doit être libre

@@ -61,7 +61,7 @@ func TestBoardGeometry(t *testing.T) {
 		}
 		// Le marqueur est centré dans une case de 3 colonnes : le premier
 		// caractère visible est donc en colonne 1, plus le décalage de la ligne.
-		wantFirst := 1 + rowOff*(i%2)
+		wantFirst := 1 + indent(i)
 		if got := firstVisible(l); got != wantFirst {
 			t.Fatalf("ligne %d : premier marqueur en colonne %d, attendu %d",
 				i, got, wantFirst)
@@ -80,7 +80,7 @@ func TestCellAtRoundTrip(t *testing.T) {
 
 	for r := 0; r < 11; r++ {
 		for q := 0; q < 11; q++ {
-			x := gridX + rowOff*(r%2) + q*(cellW+cellGap) + cellW/2
+			x := gridX + indent(r) + q*(cellW+cellGap) + cellW/2
 			y := gridY + r
 			gr, gq, ok := m.cellAt(x, y)
 			if !ok {
@@ -143,37 +143,36 @@ func TestPlaceUndoWin(t *testing.T) {
 	}
 }
 
-// Le déplacement doit suivre le quinconce : les diagonales changent de côté
-// selon la parité de la ligne.
-func TestDiagonalMovement(t *testing.T) {
-	m := testModel(120, 40)
-	m = m.start(9)
-
-	// Ligne paire : NW = (r-1, c-1), NE = (r-1, c)
-	m.cursorR, m.cursorC = 4, 4
-	m.move("NW")
-	if m.cursorR != 3 || m.cursorC != 3 {
-		t.Fatalf("NW sur ligne paire → (%d,%d), attendu (3,3)", m.cursorR, m.cursorC)
+// Le déplacement suit le losange : les six directions sont les MÊMES sur toutes
+// les lignes. C'est précisément l'intérêt du losange — sur l'ancien tracé en
+// quinconce, il fallait savoir si l'on était sur une ligne paire ou impaire
+// pour savoir où menait « nord-ouest ». Le test vérifie donc l'UNIFORMITÉ,
+// c'est-à-dire que la parité ne change plus rien.
+func TestMovementIsUniform(t *testing.T) {
+	attendu := map[string][2]int{
+		"W":  {0, -1},
+		"E":  {0, 1},
+		"NW": {-1, 0},
+		"NE": {-1, 1},
+		"SW": {1, -1},
+		"SE": {1, 0},
 	}
-	m.cursorR, m.cursorC = 4, 4
-	m.move("NE")
-	if m.cursorR != 3 || m.cursorC != 4 {
-		t.Fatalf("NE sur ligne paire → (%d,%d), attendu (3,4)", m.cursorR, m.cursorC)
-	}
-
-	// Ligne impaire : NW = (r-1, c), NE = (r-1, c+1)
-	m.cursorR, m.cursorC = 5, 4
-	m.move("NW")
-	if m.cursorR != 4 || m.cursorC != 4 {
-		t.Fatalf("NW sur ligne impaire → (%d,%d), attendu (4,4)", m.cursorR, m.cursorC)
-	}
-	m.cursorR, m.cursorC = 5, 4
-	m.move("NE")
-	if m.cursorR != 4 || m.cursorC != 5 {
-		t.Fatalf("NE sur ligne impaire → (%d,%d), attendu (4,5)", m.cursorR, m.cursorC)
+	for _, ligne := range []int{4, 5} {
+		for dir, d := range attendu {
+			m := testModel(120, 40)
+			m = m.start(9)
+			m.cursorR, m.cursorC = ligne, 4
+			m.move(dir)
+			if m.cursorR != ligne+d[0] || m.cursorC != 4+d[1] {
+				t.Errorf("ligne %d, %s → (%d,%d), attendu (%d,%d)",
+					ligne, dir, m.cursorR, m.cursorC, ligne+d[0], 4+d[1])
+			}
+		}
 	}
 
 	// Les bords ne débordent pas.
+	m := testModel(120, 40)
+	m = m.start(9)
 	m.cursorR, m.cursorC = 0, 0
 	m.move("NW")
 	m.move("W")

@@ -10,18 +10,31 @@ import (
 	"hex-tui/hex"
 )
 
-// Géométrie du plateau : chaque case occupe 3 colonnes, espacées de 4 ;
-// les lignes impaires sont décalées de 2 colonnes (quinconce).
+// Géométrie du plateau : chaque case occupe 3 colonnes, espacées de 4. Une case
+// fait donc 4 colonnes de pas, et le DEMI-PAS vaut 2 colonnes.
+//
+// Chaque ligne est décalée d'un demi-pas vers la droite PAR RAPPORT À CELLE DU
+// DESSUS : le décalage s'accumule (0, 2, 4, 6…) et ne revient jamais en
+// arrière. C'est ce qui dessine le losange, et ce qui fait que les quatre cases
+// diagonales voisines se touchent réellement à l'écran.
+//
+// Le piège à ne pas refaire : décaler UNE LIGNE SUR DEUX (r%2). On obtient
+// alors un rectangle à bords en dents de scie, où les diagonales ne se touchent
+// plus — l'image ne correspond plus aux vraies cases voisines.
 const (
 	cellW   = 3
 	cellGap = 1
-	rowOff  = 2
+	rowOff  = 2 // demi-pas en colonnes = (cellW+cellGap)/2
 )
 
-// boardWidth renvoie la largeur en colonnes du plateau courant.
+// indent renvoie le décalage horizontal, en colonnes, de la ligne r.
+func indent(r int) int { return rowOff * r }
+
+// boardWidth renvoie la largeur en colonnes du plateau courant, décalage de la
+// dernière ligne compris.
 func (m Model) boardWidth() int {
 	n := m.board.N
-	return n*cellW + (n-1)*cellGap + rowOff
+	return n*cellW + (n-1)*cellGap + indent(n-1)
 }
 
 // ---------------------------------------------------------------- plateau --
@@ -52,18 +65,16 @@ func (m Model) renderBoard() []string {
 	lines := make([]string, 0, n)
 	for r := 0; r < n; r++ {
 		var sb strings.Builder
-		if r%2 == 1 {
-			sb.WriteString(strings.Repeat(" ", rowOff))
-		}
+		sb.WriteString(strings.Repeat(" ", indent(r)))
 		for q := 0; q < n; q++ {
 			if q > 0 {
 				sb.WriteString(strings.Repeat(" ", cellGap))
 			}
 			sb.WriteString(m.renderCell(r, q))
 		}
-		// On complète à la largeur maximale : sinon les lignes impaires, plus
-		// larges de 2 colonnes, seraient centrées différemment et le plateau
-		// apparaîtrait en escalier.
+		// On complète à la largeur maximale : sinon les lignes basses, plus
+		// larges à cause du décalage, seraient centrées différemment et le
+		// losange apparaîtrait en escalier.
 		line := sb.String()
 		if pad := m.boardWidth() - lipgloss.Width(line); pad > 0 {
 			line += strings.Repeat(" ", pad)
@@ -371,7 +382,7 @@ func (m Model) cellAt(x, y int) (int, int, bool) {
 	if r < 0 || r >= m.board.N {
 		return 0, 0, false
 	}
-	lx := x - gridX - rowOff*(r%2)
+	lx := x - gridX - indent(r)
 	if lx < 0 {
 		return 0, 0, false
 	}
