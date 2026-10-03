@@ -101,7 +101,7 @@ Raison : sa sûreté repose entièrement sur l'EXACTITUDE des connexions
 virtuelles qu'on lui donne. « Tout coup hors de cette région est
 perdant » n'est vrai que si les menaces sont de VRAIES menaces.
 
-Or notre fermeture par ponts se trompe dans 0,44 % des cas : elle
+Or notre fermeture par ponts se trompe dans 0,58 % des cas : elle
 déclare connecté ce qui ne l'est pas. Utilisée pour ÉLAGUER, une erreur
 de ce genre ne coûte pas 0,4 % de finesse — elle coûte LE COUP GAGNANT,
 silencieusement, précisément dans les positions tendues où le moteur

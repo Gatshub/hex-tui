@@ -37,8 +37,9 @@ Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
 
   Ce qui n'est PAS fait (voir « À FAIRE / IDÉES » plus bas, et la note
   STRATEGIE.md pour l'ordre recommandé) :
-    - aucun TEMPLATE dans la détection de connexions : elle ne connaît
-      que les ponts, d'où son déclenchement rare (0,23 % des nœuds) ;
+    - la détection de connexions ne connaît qu'UN template (celui de
+      2e ligne de bord) : son déclenchement monte à 0,355 %, encore trop
+      rare pour peser ;
     - pas d'élagage (région mustplay, cellules capturées/dominées) ;
     - le moteur reste perfectible (politique de simulation guidée) ;
     - pas de règle du gâteau (échange de camps) pour équilibrer
@@ -170,17 +171,39 @@ LE MOTEUR : CE QU'IL VAUT, ET COMMENT C'EST MESURÉ
   vérification » et « oublié ».
 
   Pourquoi elles ne paient pas — et c'est chiffré, pas supposé : le
-  raccourci ne se déclenche que sur 0,23 % des nœuds explorés (382 fois
-  sur 164 000 dans TestVCFiringRate). Trop rare pour peser. À cela s'ajoute
-  que la détection se trompe dans ~0,44 % des cas : elle apporte donc à peu
-  près autant de bruit que d'information. Chez MoHex, les connexions
-  virtuelles servent surtout à GUIDER la simulation et à élaguer les coups
-  inférieurs — un travail bien plus lourd que le raccourci pris ici.
+  raccourci ne se déclenche que sur une fraction infime des nœuds
+  explorés. Trop rare pour peser. À cela s'ajoute que la détection se
+  trompe dans quelques cas : elle apporte donc à peu près autant de bruit
+  que d'information. Chez MoHex, les connexions virtuelles servent surtout
+  à GUIDER la simulation et à élaguer les coups inférieurs — un travail
+  bien plus lourd que le raccourci pris ici.
 
-  Limite connue et mesurée (`TestVirtualConnectionIsSound`) : la fermeture
-  par ponts se trompe dans environ 0,44 % des cas. Le cas fautif est
-  identifié — un seul coup adverse qui menace deux ponts à la fois. Un test
-  verrouille ce taux : s'il se dégradait, la suite échouerait.
+  TEMPLATE DE BORD (ajouté depuis). La fermeture ne reliait au bord que
+  les pierres POSÉES sur la ligne de bord. Elle connaît maintenant le
+  « 2nd row edge template » de HexWiki : une pierre sur la DEUXIÈME ligne
+  d'un bord, dont les deux voisines de la ligne de bord sont libres, est
+  connectée à ce bord — l'adversaire en occupe une, on prend l'autre.
+
+  Mesures, à positions IDENTIQUES (1 788 positions, recherche exhaustive) :
+
+                          sans le template   avec
+    connexions annoncées       229           516
+    erreurs                      3             3
+    taux d'erreur             1,31 %        0,58 %
+    déclenchement             0,10 %        0,355 %
+
+  Autrement dit : deux fois plus de connexions reconnues, sans une seule
+  erreur de plus — le taux d'erreur est divisé par deux, et ce sont
+  TOUJOURS LES MÊMES 3 erreurs (le cas connu du double pont menacé). Le
+  déclenchement au moins triple. C'est une amélioration réelle du
+  mécanisme, mais elle reste rare : un seul template ne suffira pas à
+  faire payer les connexions virtuelles, il en faudra plusieurs. Le
+  ziggurat (3e ligne) est le suivant sur la liste.
+
+  Limite connue et mesurée (`TestVirtualConnectionIsSound`) : les 3
+  erreurs restantes viennent d'un seul cas — un seul coup adverse qui
+  menace deux ponts à la fois. Un test verrouille ce taux : s'il se
+  dégradait, la suite échouerait.
 
   Deux pistes pour aller plus loin, par ordre de rendement :
     - une POLITIQUE de simulation guidée (répondre aux menaces locales au
@@ -444,7 +467,7 @@ DÉSINSTALLER
   guident sans garantir — et signale le piège principal : la région
   mustplay est la plus forte des idées, mais elle n'est sûre QUE si les
   connexions virtuelles sont exactes. Or les nôtres se trompent dans
-  0,44 % des cas, ce qui suffirait à élaguer un coup gagnant en silence.
+  0,58 % des cas, ce qui suffirait à élaguer un coup gagnant en silence.
 
   Les idées ci-dessous sont listées par ancienneté, pas par priorité.
 
@@ -526,7 +549,7 @@ DÉSINSTALLER
       veut échanger les camps. À activer au menu, comme option.
 
   [ ] Connexions virtuelles : vraie recherche H
-      But : remplacer l'approximation par ponts (0,44 % d'erreur) par un
+      But : remplacer l'approximation par ponts (0,58 % d'erreur) par un
       calcul exact, puis s'en servir pour GUIDER la simulation plutôt que
       pour couper l'arbre — c'est là qu'elles paient chez MoHex.
 

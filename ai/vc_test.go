@@ -247,3 +247,101 @@ func TestVirtualConnectionIsSound(t *testing.T) {
 		t.Logf("exemple d'erreur connue (double pont menacé) :\n%s", worst)
 	}
 }
+
+// ------------------------------------------------------------------ bords --
+
+// TestEdgeTemplate vérifie la règle du template de bord (« 2nd row edge
+// template » de HexWiki) : une pierre sur la DEUXIÈME ligne d'un bord, dont les
+// deux voisines posées sur la ligne de bord sont libres, est reliée à ce bord.
+//
+// La démonstration tient en une phrase — l'adversaire occupe une des deux
+// cases, on prend l'autre — mais elle se vérifie mécaniquement plutôt que de
+// l'affirmer. Le test DÉDUIT lui-même le carrier (les voisines situées sur la
+// ligne de bord) au lieu de le recopier : une erreur de géométrie dans le code
+// ne peut donc pas passer en la recopiant ici.
+func TestEdgeTemplate(t *testing.T) {
+	const n = 7
+
+	// verifie construit la fermeture du camp p et dit si (r,c) appartient au
+	// groupe du bord voulu (0 nord, 1 sud, 2 ouest, 3 est). Les quatre nœuds de
+	// bord sont stockés APRÈS les n² cases : leur indice vaut n² + bord.
+	verifie := func(b hex.Board, p uint8, r, c int, bord int32) bool {
+		v := newVirtBoard(n)
+		fb := newFastBoard(n)
+		fb.load(b)
+		v.build(fb, p)
+		return v.find(int32(r*n+c)) == v.find(int32(n*n)+bord)
+	}
+
+	// carrier renvoie les voisines de (r,c) posées sur la ligne de bord visée.
+	carrier := func(r, c int, bord int32) [][2]int {
+		var out [][2]int
+		for k := 0; k < 6; k++ {
+			nr, nc := r+hex.DR[k], c+hex.DC[k]
+			if nr < 0 || nr >= n || nc < 0 || nc >= n {
+				continue
+			}
+			switch bord {
+			case 0:
+				if nr == 0 {
+					out = append(out, [2]int{nr, nc})
+				}
+			case 1:
+				if nr == n-1 {
+					out = append(out, [2]int{nr, nc})
+				}
+			case 2:
+				if nc == 0 {
+					out = append(out, [2]int{nr, nc})
+				}
+			case 3:
+				if nc == n-1 {
+					out = append(out, [2]int{nr, nc})
+				}
+			}
+		}
+		return out
+	}
+
+	cas := []struct {
+		nom  string
+		p    uint8
+		pl   hex.Player
+		r, c int
+		bord int32
+	}{
+		{"nord", nsStone, hex.NordSud, 1, 3, 0},
+		{"sud", nsStone, hex.NordSud, n - 2, 3, 1},
+		{"ouest", eoStone, hex.EstOuest, 3, 1, 2},
+		{"est", eoStone, hex.EstOuest, 3, n - 2, 3},
+	}
+
+	for _, c := range cas {
+		b := hex.NewBoard(n)
+		b.Set(c.r, c.c, c.pl)
+
+		// 1. Les deux cases du carrier sont libres : la règle s'applique.
+		if !verifie(b, c.p, c.r, c.c, c.bord) {
+			t.Errorf("%s : la pierre devrait être reliée au bord "+
+				"(les deux voisines de bord sont libres)", c.nom)
+			continue
+		}
+
+		// 2. Le carrier doit bien compter DEUX cases : une seule libre ne suffit
+		//    pas. C'est ce qui distingue cette règle d'une simple adjacence.
+		carr := carrier(c.r, c.c, c.bord)
+		if len(carr) != 2 {
+			t.Fatalf("%s : carrier de %d cases, attendu 2 (géométrie)",
+				c.nom, len(carr))
+		}
+		autre := hex.NordSud
+		if c.pl == hex.NordSud {
+			autre = hex.EstOuest
+		}
+		b.Set(carr[0][0], carr[0][1], autre)
+		if verifie(b, c.p, c.r, c.c, c.bord) {
+			t.Errorf("%s : la règle s'applique encore alors qu'une des deux "+
+				"cases de bord est occupée — elle ne doit plus", c.nom)
+		}
+	}
+}

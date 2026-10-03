@@ -77,6 +77,15 @@ func (v *virtBoard) neigh(r, c int, dr, dc *[6]int, k int) int {
 	return nr*v.n + nc
 }
 
+// libre dit si la case (r,c) est dans le plateau et vide. Hors plateau, la
+// réponse est non : une case qui n'existe pas ne peut pas servir de voisine.
+func libre(fb *fastBoard, n, r, c int) bool {
+	if r < 0 || r >= n || c < 0 || c >= n {
+		return false
+	}
+	return fb.cells[r*n+c] == noStone
+}
+
 // build constitue les liaisons du camp p présentes sur le plateau fb.
 func (v *virtBoard) build(fb *fastBoard, p uint8) {
 	n := fb.n
@@ -120,7 +129,48 @@ func (v *virtBoard) build(fb *fastBoard, p uint8) {
 		}
 	}
 
-	// 2. Ponts : deux pierres du camp séparées d'un cran dans l'ordre
+	// 2. Template de bord (« 2nd row edge template », edge template II de
+	//    HexWiki) : une pierre sur la DEUXIÈME ligne d'un bord, dont les deux
+	//    cases voisines de la ligne de bord sont libres, est connectée à ce
+	//    bord. L'adversaire en occupe une, on prend l'autre — la partie est
+	//    donc jouée d'avance, quelle que soit la réponse.
+	//
+	//    Pourquoi ça compte : la fermeture par ponts ne reliait au bord que les
+	//    pierres POSÉES sur la ligne de bord. Une pierre à une case du bord
+	//    n'était pas vue comme connectée, alors qu'elle l'est. Les templates de
+	//    bord sont très fréquents là où les parties se décident.
+	//
+	//    La règle est SÛRE (démonstration en une phrase ci-dessus) et
+	//    TestEdgeTemplate vérifie par recherche exhaustive qu'elle ne ment pas.
+	for r := 0; r < n; r++ {
+		for c := 0; c < n; c++ {
+			if fb.cells[r*n+c] != p {
+				continue
+			}
+			i := int32(r*n + c)
+			if p == nsStone {
+				// 2e ligne depuis le haut : voisines en (0,c) et (0,c+1).
+				if r == 1 && libre(fb, n, 0, c) && libre(fb, n, 0, c+1) {
+					v.union(i, base)
+				}
+				// 2e ligne depuis le bas : voisines en (n-1,c-1) et (n-1,c).
+				if r == n-2 && libre(fb, n, n-1, c-1) && libre(fb, n, n-1, c) {
+					v.union(i, base+1)
+				}
+			} else {
+				// 2e colonne depuis l'ouest : voisines en (r,0) et (r+1,0).
+				if c == 1 && libre(fb, n, r, 0) && libre(fb, n, r+1, 0) {
+					v.union(i, base+2)
+				}
+				// 2e colonne depuis l'est : voisines en (r,n-1) et (r-1,n-1).
+				if c == n-2 && libre(fb, n, r, n-1) && libre(fb, n, r-1, n-1) {
+					v.union(i, base+3)
+				}
+			}
+		}
+	}
+
+	// 3. Ponts : deux pierres du camp séparées d'un cran dans l'ordre
 	//    cyclique, avec les DEUX cases intermédiaires libres.
 	for r := 0; r < n; r++ {
 		dr, dc := &hex.DR, &hex.DC
