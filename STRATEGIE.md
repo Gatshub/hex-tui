@@ -81,10 +81,11 @@ Ce qu'on a déjà, et qui correspond à quel niveau de la feuille :
                                    de déclenchement 0,23 % des nœuds)
   adjacence = connexion ......... oui (testé)
   coups décisifs exacts ......... oui (victoire immédiate, blocage)
-  ziggurat ...................... NON
-  templates de bord ............. NON
-  reconnaître le connecté ....... partiellement (fermeture par ponts,
-                                   taux d'erreur mesuré 0,44 % — 1/227)
+  ziggurat ...................... NON (le suivant sur la liste)
+  templates de bord ............. OUI, mais UN SEUL (2e ligne)
+  reconnaître le connecté ....... partiellement (fermeture par ponts et
+                                   template de bord, taux d'erreur mesuré
+                                   0,58 % — 3/516)
   minimaxing (murs) ............. implicitement, par les simulations
   région mustplay ............... NON
   cellules capturées/dominées ... NON
