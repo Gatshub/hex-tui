@@ -418,3 +418,35 @@ func TestBenchBudget(t *testing.T) {
 	a, b := duel(n, games, engine(gros, 505), engine(petit, 606))
 	fmt.Printf("  6000 simulations %2d - 4000 simulations %2d\n", a, b)
 }
+
+// TestBenchDifficile vérifie que le nouveau Difficile (2000 par case) bat
+// vraiment l'ancien (750 par case) — et de combien. Sans cette mesure, monter le
+// budget ne serait qu'une manière élégante de faire attendre le joueur.
+//
+// Le duel se joue sur un 7×7 pour rester dans un temps raisonnable : aux budgets
+// réels, une seule partie dure plusieurs minutes. Le rapport testé (2,67) est
+// celui du changement réel.
+//
+//	HEX_BENCH_DIFF=1 [HEX_BENCH_GAMES=40] go test ./ai/ -run TestBenchDifficile -v -count=1 -timeout 580s
+func TestBenchDifficile(t *testing.T) {
+	if os.Getenv("HEX_BENCH_DIFF") == "" {
+		t.Skip("définir HEX_BENCH_DIFF=1 pour mesurer le nouveau Difficile")
+	}
+	const n = 7
+	games := 40
+	if v := os.Getenv("HEX_BENCH_GAMES"); v != "" {
+		if k, err := strconv.Atoi(v); err == nil && k > 0 {
+			games = k
+		}
+	}
+	neuf := 2000 * n * n
+	vieux := 750 * n * n
+
+	fmt.Printf("\n===== Difficile 2000/case contre 750/case — %d parties, %d x %d =====\n",
+		games, n, n)
+	fmt.Printf("  (écart type : %.1f partie ; en dessous, c'est du bruit)\n\n",
+		math.Sqrt(float64(games))/2)
+
+	a, b := duel(n, games, engine(neuf, 707), engine(vieux, 808))
+	fmt.Printf("  2000/case %2d - 750/case %2d\n", a, b)
+}

@@ -138,26 +138,37 @@ ADVERSAIRE
 
       Facile        25 sim./case    11×11 :   3 025 sim.   ~35 ms
       Moyen        100 sim./case    11×11 :  12 100 sim.   ~125 ms
-      Difficile    750 sim./case    11×11 :  90 750 sim.   ~2,6 s (pire coup)
-                                    13×13 : 126 750 sim.   ~3,5 s (estimé)
+      Difficile   2000 sim./case    11×11 : 242 000 sim.   ~7,9 s (pire coup)
+                                    13×13 : 338 000 sim.   ~11 s (estimé)
 
-  POURQUOI DIFFICILE A ÉTÉ AUGMENTÉ (500 → 750 par case). Parce que c'est le
-  seul levier dont l'effet soit MESURÉ. Tout le reste — connexions virtuelles,
-  réutilisation d'arbre, politique de simulation — s'est révélé sans apport.
-  Mesure du rapport 1,5, à 9×9, sur 100 parties :
+  POURQUOI DIFFICILE VAUT 2000 (il valait 750). Parce que c'est le seul levier
+  dont l'effet soit mesuré, et que la mesure est concluante. Duel sur 7×7,
+  mêmes graines des deux côtés :
 
-      6 000 simulations   75  -  4 000 simulations   25      (5 σ)
+      200 parties :  2000 par case  112  -  750 par case   88     (1,7 σ)
+      400 parties :  2000 par case  225  -  750 par case  175     (2,5 σ)
 
-  Le rapport testé est bien celui du passage (500 → 750), mais à budget plus
-  bas : la courbe s'aplatit en haut, donc c'est un MAJORANT du gain réel. Il
-  est large, et la direction est certaine.
+  Soit 56 % de victoires pour le nouveau budget, au-dessus du seuil de 2 σ que
+  ce projet s'impose. C'est le PREMIER mécanisme du projet dont la mesure
+  établisse qu'il rend le moteur plus fort : les trois autres (connexions
+  virtuelles, réutilisation d'arbre, politique de simulation) ont tous été
+  mesurés sans apport et désactivés.
+
+  POURQUOI PAS DAVANTAGE. La courbe s'aplatit, et on peut le montrer : un
+  rapport de 1,5 donnait 75-25 quand les budgets étaient faibles (4 000 contre
+  6 000 simulations), alors qu'un rapport de 2,67 n'en donne plus que 56 %
+  maintenant que les budgets sont élevés. Chaque doublement coûte de plus en
+  plus cher en temps pour de moins en moins de force. 2000 est le point où le
+  jeu reste jouable.
 
   LE PRIX, ET IL EST RÉEL. Le projet s'était fixé de rester sous environ une
-  seconde par coup ; Difficile la dépasse maintenant (2,6 s sur le coup le
-  plus lent d'un 11×11, mesuré par TestBenchSpeed). C'est un arbitrage
-  assumé, pas un oubli : le temps d'attente est le prix de la seule force que
-  l'on sache acheter ici. Facile et Moyen sont INCHANGÉS — ils restent
-  rapides (89 ms et 330 ms).
+  seconde par coup ; Difficile la dépasse largement (7,9 s sur le coup le plus
+  lent d'un 11×11, mesuré par TestBenchSpeed). C'est un arbitrage ASSUMÉ, pas
+  un oubli : le temps d'attente est le prix de la seule force que l'on sache
+  acheter ici. Facile et Moyen sont INCHANGÉS — ils restent rapides.
+
+  Attention au 13×13 : 338 000 simulations par coup, une dizaine de secondes
+  sur les coups les plus lents. Qui veut jouer vite choisit Moyen.
 
   Et c'est ce qui désigne la suite. Le coût d'une simulation a été mesuré à
   ~28 µs, contre ~10 µs dans les chiffres historiques du projet : les temps

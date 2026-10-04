@@ -191,6 +191,36 @@ E. POLITIQUE DE SIMULATION GUIDÉE
    vite », puisque aller plus vite revient à augmenter le budget.
 
 --------------------------------------------------------------------
+5bis. LE BUDGET, SEUL LEVIER ÉTABLI (mesure de référence)
+--------------------------------------------------------------------
+
+  Le raisonnement du 5 s'est vérifié par la mesure. Difficile est passé
+  de 750 à 2000 simulations par case, et le duel le confirme :
+
+      200 parties :  112 -  88   (1,7 σ)
+      400 parties :  225 - 175   (2,5 σ)
+
+  Soit 56 % de victoires pour le budget le plus élevé. C'est le PREMIER
+  mécanisme du projet dont la mesure établisse un gain. Les trois autres
+  avaient un signe nul ou négatif.
+
+  Deux enseignements à garder :
+
+    - la courbe S'APLATIT. Un rapport de 1,5 donnait 75-25 quand les
+      budgets étaient faibles (4 000 contre 6 000 simulations) ; un
+      rapport de 2,67 n'en donne plus que 56 % maintenant qu'ils sont
+      élevés. Le budget n'est pas une baguette magique : il faut payer
+      de plus en plus cher pour de moins en moins de force.
+
+    - à 200 parties on lisait 1,7 σ, à 400 on lit 2,5 σ. Une mesure
+      sous le seuil n'est pas un résultat négatif : c'est une mesure
+      INCOMPLÈTE. Ne pas conclure avant d'avoir assez de parties — et
+      le dire clairement quand on ne les a pas.
+
+  Le prix est réel : 7,9 s sur le coup le plus lent d'un 11×11, ~11 s
+  sur un 13×13. C'est un arbitrage du joueur, tranché explicitement.
+
+--------------------------------------------------------------------
 6. ORDRE RECOMMANDÉ
 --------------------------------------------------------------------
 
