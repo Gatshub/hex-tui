@@ -400,15 +400,19 @@ func (m Model) cellGeom() (lead, step, hit int) {
 // de case entre elles.
 func (m Model) diamondCellAt(lx, ly int) (int, int, bool) {
 	n := m.board.N
-	if ly < 0 || ly >= 2*n-1 {
+	// La ligne 0 est le bord supérieur : elle ne porte aucune case.
+	if ly < 1 || ly > 2*n {
 		return 0, 0, false
 	}
-	d := ly - (n - 1)
-	x := lx - diamondIndent(d) - diamondSep
+	s := ly - 1
+	if s > 2*n-2 {
+		return 0, 0, false
+	}
+	x := lx - diamondIndent(s-(n-1))
 	if x < 0 {
 		return 0, 0, false
 	}
-	cells := diamondLine(n, d)
+	cells := diamondLine(n, s)
 	i := x / diamondPeriod
 	if i >= len(cells) {
 		return 0, 0, false

@@ -127,9 +127,9 @@ func (m Model) boardRawWidth() int {
 		// chaque alvéole occupe honeyCell colonnes (le côté est partagé)
 		return n*honeyCell + honeyStep*(n-1)
 	case styleDiamond:
-		// La ligne la plus longue est la diagonale du milieu : un « __ » de
-		// bord, n alvéoles, n-1 séparateurs, un « __ » de bord.
-		return n*diamondPeriod + diamondSep
+		// La ligne la plus longue est la diagonale du milieu : n alvéoles
+		// (« / », deux colonnes, « \ ») séparées par n-1 « __ ».
+		return n*diamondPeriod - diamondSep
 	default:
 		return n*cellW + (n-1)*cellGap + indent(n-1)
 	}
@@ -356,21 +356,35 @@ func (m Model) rowsHoneycomb() []boardRow {
 	return rows
 }
 
-// diamondLine : les cases de la diagonale r-q = d, dans l'ordre des r croissants.
+// diamondLine : les cases de la diagonale r+q = s, dans l'ordre des r croissants.
 //
-// Une diagonale du plateau compte n-|d| cases — c'est ce qui donne au losange
-// de hexagones ses lignes de 1, 2, … n, … 2, 1 cases, donc sa silhouette.
-func diamondLine(n, d int) [][2]int {
+// C'EST LA BONNE DIAGONALE, et c'est mesurable. Deux cases qui se suivent dans
+// cette liste diffèrent de (1, -1) — la direction SUD-OUEST, donc deux cases
+// VOISINES : elles partagent un côté, et c'est ce côté que le dessin figure par
+// le « __ » qui les sépare.
+//
+// L'AUTRE diagonale (r-q constant) ne marche pas, et le premier jet de ce
+// damier s'y était trompé. Deux cases qui s'y suivent diffèrent de (1, +1) :
+// ce n'est PAS une direction du réseau (voir hex.DR/hex.DC), elles sont à deux
+// cases l'une de l'autre. Le « __ » entre elles ne séparait donc rien, les
+// vraies cases voisines tombaient ailleurs, et le pourtour s'ouvrait — sommet
+// béant, bords inférieurs décousus, tirets orphelins aux deux pointes.
+//
+// Les deux diagonales donnent pourtant la même silhouette : une diagonale du
+// plateau compte n - |d| cases, soit 1, 2, … n, … 2, 1, et la somme vaut n².
+// Ce qui les distingue n'est pas la forme, c'est de savoir si les cases
+// qu'on range côte à côte se touchent vraiment.
+func diamondLine(n, s int) [][2]int {
 	lo, hi := 0, n-1
-	if d > 0 {
-		lo = d
+	if s >= n {
+		lo = s - (n - 1)
 	}
-	if d < 0 {
-		hi = n - 1 + d
+	if s <= n-1 {
+		hi = s
 	}
 	cells := make([][2]int, 0, hi-lo+1)
 	for r := lo; r <= hi; r++ {
-		cells = append(cells, [2]int{r, r - d})
+		cells = append(cells, [2]int{r, s - r})
 	}
 	return cells
 }
@@ -387,47 +401,123 @@ func diamondIndent(d int) int {
 // rowsDiamond : le losange de hexagones — le damier n° 2 de HexWiki.
 //
 // C'est le MÊME plateau que les autres, montré TOURNÉ : une ligne du dessin est
-// une DIAGONALE du plateau, et non une rangée. D'où la silhouette en losange
-// allongé, et d'où le fait que les cases voisines DANS une ligne soient ici
-// séparées par un « __ » : dans cette orientation, leur côté partagé est
-// horizontal, alors qu'il est vertical dans le nid d'abeilles.
+// une DIAGONALE du plateau (r+q constant), et non une rangée. D'où la
+// silhouette en losange allongé.
 //
-// LES BORDS SONT DESSINÉS. Une case est bordée par ses voisines, sauf sur le
-// pourtour du plateau : là, personne ne dessine son côté. Trois manques, et
-// trois lignes de code :
+// ON POSE LES CARACTÈRES SUR UN CANEVAS, et c'est le cœur du tracé. Une ligne
+// du dessin porte DEUX moitiés de cases : celles de la diagonale qui monte
+// (leur « /x \ ») et celles de la diagonale du dessus (leur « \__/ »). Les deux
+// se recouvrent partiellement, et là où elles se recouvrent elles doivent poser
+// le MÊME caractère : le « \ » d'une case EST le « \ » de sa voisine. Les poser
+// naïvement bout à bout, comme un premier jet l'a fait, ne dessine qu'une moitié
+// de chaque case — et le pourtour s'ouvre.
 //
-//   - la PREMIÈRE case de chaque ligne n'a pas de voisine au nord-ouest : son
-//     côté « __ » gauche manque ;
-//   - la DERNIÈRE n'a pas de voisine au sud-est : son côté droit manque ;
-//   - la dernière diagonale n'a AUCUNE ligne en dessous : ses cases n'ont pas
-//     de bas.
+// Deux bords sont posés à part, parce que personne d'autre ne les pose :
 //
-// Sans ces trois-là, le pourtour s'ouvre — c'est ce que le joueur a vu.
+//   - la ligne 0, le bord SUPÉRIEUR de la première diagonale, sans quoi le
+//     sommet du losange reste béant ;
+//   - le « __ » à gauche de la première case et à droite de la dernière. Aux
+//     deux POINTES du losange, celui de gauche n'a pas la place : il est omis,
+//     exactement comme le fait la référence — et c'est celui que le joueur a vu
+//     « ne servir à rien » quand je l'avais décalé pour le faire tenir.
 func (m Model) rowsDiamond() []boardRow {
 	n := m.board.N
-	rows := make([]boardRow, 0, 2*n)
-	for k := 0; k < 2*n-1; k++ {
-		d := k - (n - 1)
-		var sb strings.Builder
-		sb.WriteString(strings.Repeat(" ", diamondIndent(d)))
-		sb.WriteString(strings.Repeat("_", diamondSep)) // bord nord-ouest
-		for i, c := range diamondLine(n, d) {
-			if i > 0 {
-				sb.WriteString(strings.Repeat("_", diamondSep))
-			}
-			mark, st := m.cellMark(c[0], c[1])
-			sb.WriteString("/" + st.Width(diamondCell-2).Align(lipgloss.Center).Render(mark) + "\\")
+	larg := m.boardRawWidth()
+
+	// ind : décalage de la diagonale s, dont le « / » de la première case est
+	// la première colonne.
+	ind := func(s int) int { return diamondIndent(s - (n - 1)) }
+
+	canevas := func() []rune {
+		l := make([]rune, larg)
+		for i := range l {
+			l[i] = ' '
 		}
-		sb.WriteString(strings.Repeat("_", diamondSep)) // bord sud-est
-		// Ligne de décoration : aucune ligne du dessin ne porte un numéro de
-		// rangée, puisque ce sont des diagonales.
-		rows = append(rows, boardRow{text: sb.String(), row: -1})
+		return l
+	}
+	pose := func(l []rune, col int, txt string) {
+		for i, ch := range txt {
+			if c := col + i; c >= 0 && c < len(l) {
+				l[c] = ch
+			}
+		}
 	}
 
-	// Le bas de la dernière diagonale : son « \__/ », qui ferme ses cases.
-	bas := strings.Repeat(" ", diamondIndent(n-1)+diamondSep)
-	bas += "\\" + strings.Repeat("_", diamondSep) + "/"
-	rows = append(rows, boardRow{text: bas, row: -1})
+	rows := make([]boardRow, 0, 2*n+1)
+
+	// Ligne 0 : le bord supérieur de la première diagonale.
+	haut := canevas()
+	for i := range diamondLine(n, 0) {
+		pose(haut, ind(0)+1+6*i, "__") // les deux colonnes INTÉRIEURES de la case
+	}
+	rows = append(rows, boardRow{text: strings.TrimRight(string(haut), " "), row: -1})
+
+	for k := 1; k <= 2*n; k++ {
+		s := k - 1 // la diagonale dont les cases font le HAUT de cette ligne
+		l := canevas()
+		// Le canevas ne porte que la GÉOMÉTRIE, en caractères nus. Le style des
+		// cases est mis de côté et appliqué à l'émission : glisser les
+		// séquences ANSI dans le canevas y ferait autant de « caractères », et
+		// tout le tracé partirait de travers.
+		stylé := map[int]string{}
+
+		// Les cases de la diagonale s : leur haut et leur contenu.
+		if s < 2*n-1 {
+			for i, c := range diamondLine(n, s) {
+				mark, st := m.cellMark(c[0], c[1])
+				col := ind(s) + 6*i
+				// Les glyphes ⬢ et ⬡ font DEUX colonnes pour UN rune : le
+				// canevas est indexé par colonne, donc on n'y met qu'un repère
+				// d'une colonne et c'est le style, à l'émission, qui occupe les
+				// deux. Poser le glyphe ici décalerait toute la ligne.
+				pose(l, col, "/ ")
+				pose(l, col+3, `\`)
+				stylé[col+1] = st.Width(2).Align(lipgloss.Center).Render(mark)
+			}
+		}
+		// Les cases de la diagonale du DESSUS : leur bas, qui ferme aussi les
+		// cases ci-dessus sur les côtés.
+		if s-1 >= 0 {
+			for i := range diamondLine(n, s-1) {
+				pose(l, ind(s-1)+6*i, `\__/`)
+			}
+		}
+		// Les deux bords que personne n'a posés : le « __ » à gauche de la
+		// première case et à droite de la dernière. C'est la PORTÉE du dessin qui
+		// les règle, et elle suffit :
+		//
+		//   - moitié haute, la diagonale du dessus est plus à DROITE et ne
+		//     couvre pas ces colonnes : on les pose, elles ferment le bord ;
+		//   - moitié basse, elle est plus à GAUCHE et son « \__/ » occupe DÉJÀ
+		//     ces deux colonnes : les reposer ne changerait pas un caractère ;
+		//   - aux deux POINTES, la colonne tombe hors du dessin : rien n'est
+		//     posé, et c'est exactement ce que fait la référence.
+		//
+		// Une condition « suis-je dans la moitié haute ? » a été essayée puis
+		// retirée : la mutation qui la neutralise ne change pas un caractère du
+		// rendu. Elle ne servait à rien, et un test ne peut pas la défendre.
+		if s < 2*n-1 {
+			nb := len(diamondLine(n, s))
+			if g := ind(s) - diamondSep; g >= 0 {
+				pose(l, g, strings.Repeat("_", diamondSep))
+			}
+			if d := ind(s) + 6*(nb-1) + diamondCell; d < larg {
+				pose(l, d, strings.Repeat("_", diamondSep))
+			}
+		}
+
+		var sb strings.Builder
+		for col := 0; col < larg; {
+			if txt, ok := stylé[col]; ok {
+				sb.WriteString(txt)
+				col += 2
+				continue
+			}
+			sb.WriteRune(l[col])
+			col++
+		}
+		rows = append(rows, boardRow{text: strings.TrimRight(sb.String(), " "), row: -1})
+	}
 	return rows
 }
 

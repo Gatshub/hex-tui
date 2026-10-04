@@ -415,20 +415,37 @@ TROIS DAMIERS, ET LES COORDONNÉES
   qu'il est vertical dans le nid d'abeilles. Le pas d'une alvéole est donc de
   6 colonnes (4 + 2), et la ligne suivante est décalée de la moitié, 3.
 
-  LES BORDS SONT DESSINÉS. Une case est bordée par ses voisines, sauf sur le
-  pourtour du plateau : là, personne ne dessine son côté. Trois manques, et
-  trois lignes de code — c'est ce que le joueur a vu :
+  ON POSE LES CARACTÈRES SUR UN CANEVAS, et c'est le cœur du tracé. Une ligne
+  du dessin porte DEUX moitiés de cases : celles de la diagonale qui monte
+  (leur « /x \ ») et celles de la diagonale du dessus (leur « \__/ »). Les deux
+  se recouvrent partiellement, et là où elles se recouvrent elles posent le
+  MÊME caractère — le « \ » d'une case EST le « \ » de sa voisine.
 
-    - la PREMIÈRE case de chaque ligne n'a pas de voisine au nord-ouest :
-      son côté « __ » gauche manque ;
-    - la DERNIÈRE n'a pas de voisine au sud-est : son côté droit manque ;
-    - la dernière diagonale n'a AUCUNE ligne en dessous : ses cases n'ont
-      pas de bas.
+  Deux bords sont posés à part : la ligne 0, le bord SUPÉRIEUR de la première
+  diagonale — sans elle le sommet du losange reste béant —, et le « __ » à
+  gauche de la première case et à droite de la dernière. Aux deux POINTES du
+  losange, celui de gauche n'a pas la place : il est omis, exactement comme
+  dans la référence.
 
-  Le premier jet de ce damier ne les dessinait pas, et le pourtour s'ouvrait.
-  Note : ce n'est PAS le même problème que sur le nid d'abeilles, où la place
-  est réellement prise par les « \ » et « / » du bas de l'alvéole. Ici la
-  place existe, il fallait juste l'occuper.
+  TROIS PIÈGES, tous payés, et tous désormais tenus par un test :
+
+    - grouper les cases par r-q au lieu de r+q. Deux cases voisines dans la
+      liste diffèrent alors de (1,+1), qui n'est PAS une direction du réseau
+      (hex.DR/hex.DC) : elles sont à DEUX cases l'une de l'autre, le « __ »
+      entre elles ne sépare rien, et le pourtour s'ouvre. Le test exige
+      maintenant que deux cases rangées côte à côte soient VOISINES.
+    - poser les glyphes ⬢ et ⬡ dans le canevas. Ils font deux colonnes pour UN
+      rune : le canevas, indexé par colonne, partait de travers. Il ne porte
+      plus qu'un repère d'une colonne, et c'est le style qui occupe les deux à
+      l'émission.
+    - glisser les séquences ANSI dans le canevas : chaque échappement y devient
+      un caractère. Géométrie et style sont séparés — le canevas est nu, le
+      style est appliqué en sortie.
+
+  Ce n'est PAS le même problème que sur le nid d'abeilles, où la place du bord
+  supérieur est réellement prise par les « \ » et « / » du bas de l'alvéole :
+  là-bas il faudrait une troisième ligne, ici il fallait juste poser les deux
+  moitiés ensemble.
 
     ATTENTION aux coordonnées : le losange de hexagones N'EN MONTRE PAS. Ses
     lignes sont des diagonales, donc ni « la ligne 5 » ni « la colonne C » ne

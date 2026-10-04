@@ -356,68 +356,109 @@ func TestLosangeDeHexagones(t *testing.T) {
 		t.Error("les coordonnées ne devraient pas s'afficher dans ce damier")
 	}
 
+	// LE point du damier : deux cases rangées côte à côte dans une ligne
+	// doivent être VOISINES, sinon le « __ » qui les sépare ne sépare rien et
+	// le pourtour s'ouvre. C'est exactement ce que le premier jet ratait, en
+	// prenant la diagonale r-q (écart (1,+1) : deux cases, pas une).
+	for s := 0; s < 2*n-1; s++ {
+		cells := diamondLine(n, s)
+		for i := 1; i < len(cells); i++ {
+			dr := cells[i][0] - cells[i-1][0]
+			dc := cells[i][1] - cells[i-1][1]
+			voisin := false
+			for k := 0; k < len(hex.DR); k++ {
+				if hex.DR[k] == dr && hex.DC[k] == dc {
+					voisin = true
+				}
+			}
+			if !voisin {
+				t.Errorf("diagonale %d : %v et %v se suivent mais ne sont pas voisines (écart %d,%d)",
+					s, cells[i-1], cells[i], dr, dc)
+			}
+		}
+	}
+
 	total := 0
 	for k := 0; k < 2*n-1; k++ {
-		total += len(diamondLine(n, k-(n-1)))
+		total += len(diamondLine(n, k))
 	}
 	if total != n*n {
 		t.Errorf("le losange compte %d cases, attendu %d (le plateau entier)", total, n*n)
 	}
 
 	lines := m.boardLines()
-	// Les 2n-1 diagonales, plus la ligne qui ferme le bas de la dernière.
-	if len(lines) != 2*n {
-		t.Fatalf("%d lignes, attendu %d (une par diagonale + le bas)", len(lines), 2*n)
+	// Une ligne PAR DIAGONALE (2n-1), plus le bord supérieur et le bas.
+	if len(lines) != 2*n+1 {
+		t.Fatalf("%d lignes, attendu %d (2n-1 diagonales + le haut + le bas)", len(lines), 2*n+1)
 	}
 
-	// La diagonale du milieu porte n alvéoles : elle doit remplir la largeur du
-	// plateau, ni plus ni moins.
-	if got := lipgloss.Width(strings.TrimRight(lines[n-1], " ")); got != m.boardRawWidth() {
-		t.Errorf("la ligne du milieu fait %d colonnes, la largeur du plateau %d",
-			got, m.boardRawWidth())
+	// Le bord supérieur : un « __ » sous chaque case de la première diagonale,
+	// à ses deux colonnes INTÉRIEURES. Sans lui, le sommet reste béant.
+	haut := lines[0]
+	for i := range diamondLine(n, 0) {
+		col := demiPas*(n-1) + 1 + pas*i
+		if col+2 > len(haut) || haut[col:col+2] != "__" {
+			t.Errorf("le bord supérieur n'a pas de « __ » en colonne %d : %q", col, haut)
+		}
 	}
 
-	// Le bas de la dernière diagonale : « \__/ » sous son unique case.
-	if want := strings.Repeat(" ", demiPas*(n-1)+separateur) + `\__/`; strings.TrimRight(lines[2*n-1], " ") != want {
-		t.Errorf("le bas du losange est %q, attendu %q",
-			strings.TrimRight(lines[2*n-1], " "), want)
+	// Le bas : le « \__/ » de la dernière diagonale, qui ferme ses cases.
+	if bas := strings.TrimRight(lines[2*n], " "); !strings.HasSuffix(bas, `\__/`) {
+		t.Errorf("le bas du losange est %q, attendu un « \\__/ » final", bas)
 	}
 
+	// Le POURTOUR, zone par zone. C'est là que le joueur a vu les défauts.
+	for s := 0; s < 2*n-1; s++ {
+		l := strings.TrimSpace(lines[s+1])
+		switch {
+		case s < n-1:
+			// Moitié haute : la diagonale du dessus est plus à droite, elle ne
+			// pose pas ces bords. C'est donc à nous.
+			if !strings.HasPrefix(l, "__") {
+				t.Errorf("diagonale %d : pas de bord à gauche — %q", s, l)
+			}
+			if !strings.HasSuffix(l, "__") {
+				t.Errorf("diagonale %d : pas de bord à droite — %q", s, l)
+			}
+		case s == n-1:
+			// Les deux POINTES : rien ne doit y dépasser. C'est ce que le
+			// joueur a vu « ne servir à rien ».
+			if strings.HasPrefix(l, "_") || strings.HasSuffix(l, "_") {
+				t.Errorf("diagonale du milieu : bord inutile — %q", l)
+			}
+		default:
+			// Moitié basse : la diagonale du dessus est plus à GAUCHE, son
+			// « \__/ » déborde d'un caractère de chaque côté et ferme le bord.
+			// La ligne doit donc OUVRIR sur ce « \__/ », intact.
+			if !strings.HasPrefix(l, `\__/`) {
+				t.Errorf("diagonale %d : le bas de la diagonale du dessus doit déborder à gauche — %q", s, l)
+			}
+			if !strings.HasSuffix(l, "/") {
+				t.Errorf("diagonale %d : le bas de la diagonale du dessus doit déborder à droite — %q", s, l)
+			}
+		}
+	}
+
+	// Le clic : chaque case se retrouve à la colonne où elle est DESSINÉE.
 	play := m.buildPlay()
 	top := (m.height - len(play)) / 2
 	gridY := top + 2
 	gridX := (m.width - m.boardWidth()) / 2
 
-	for k, l := range lines[:2*n-1] {
-		d := k - (n - 1)
-		cells := diamondLine(n, d)
-
-		if got := len(l) - len(strings.TrimLeft(l, " ")); got != demiPas*absInt(d) {
-			t.Errorf("ligne %d (d=%d) : indentation %d, attendu %d",
-				k, d, got, demiPas*absInt(d))
-		}
-		if got := strings.Count(l, "/"); got != len(cells) {
-			t.Errorf("ligne %d (d=%d) : %d cases dessinées, attendu %d",
-				k, d, got, len(cells))
-		}
-		// Les bords : la ligne doit commencer et finir par son « __ ».
-		if !strings.HasPrefix(strings.TrimLeft(l, " "), "__") {
-			t.Errorf("ligne %d : pas de bord nord-ouest", k)
-		}
-		if !strings.HasSuffix(strings.TrimRight(l, " "), "__") {
-			t.Errorf("ligne %d : pas de bord sud-est", k)
-		}
+	for s := 0; s < 2*n-1; s++ {
+		cells := diamondLine(n, s)
+		ind := diamondIndent(s - (n - 1))
 		for i, c := range cells {
-			// Le contenu de la case suit son « / », lui-même après le bord.
-			x := gridX + demiPas*absInt(d) + separateur + i*pas + 1
-			gr, gq, ok := m.cellAt(x, gridY+k)
+			// La diagonale s est dessinée sur la ligne s+1 de boardLines,
+			// son « / » en colonne ind, son contenu juste après.
+			gr, gq, ok := m.cellAt(gridX+ind+pas*i+1, gridY+1+s)
 			if !ok {
-				t.Errorf("ligne %d, case %d : clic refusé", k, i)
+				t.Errorf("diagonale %d, case %d : clic refusé", s, i)
 				continue
 			}
 			if gr != c[0] || gq != c[1] {
-				t.Errorf("ligne %d, case %d : clic → (%d,%d), attendu (%d,%d)",
-					k, i, gr, gq, c[0], c[1])
+				t.Errorf("diagonale %d, case %d : clic → (%d,%d), attendu (%d,%d)",
+					s, i, gr, gq, c[0], c[1])
 			}
 		}
 	}
