@@ -424,10 +424,36 @@ TROIS DAMIERS, ET LES COORDONNÉES
   y répondre demandait de savoir si l'on était sur une ligne paire ou
   impaire. C'est aussi le plus encombrant (deux lignes par case).
 
+  SA GÉOMÉTRIE EST À PART, et c'est le piège de ce fichier. Une alvéole
+  fait QUATRE colonnes, contre une seule pour une case de losange :
+
+      d'une rangée à la suivante : 2 colonnes, la MOITIÉ d'une alvéole
+      — et non 1, sinon les alvéoles se chevauchent de trois colonnes
+      sur quatre et le dessin n'est plus un nid d'abeilles ;
+      les deux lignes d'une rangée partent de la MÊME colonne.
+
+  Ce pas de 1 était celui du losange, appliqué par mégarde au nid
+  d'abeilles : les rangées s'empilaient, et les numéros de ligne
+  dérivaient vers la gauche au fil des rangées. D'où rowStep() et
+  rowIndent(), qui répondent selon le damier.
+
+  LA SOURIS SUIT LA MÊME GÉOMÉTRIE (cellGeom), et c'est pour la même
+  raison : elle était restée sur le pas du losange, donc un clic sur une
+  alvéole tombait une case trop loin — et le dernier de chaque rangée
+  n'était même plus atteignable. TestCellAtRoundTrip part maintenant des
+  cases TELLES QU'ELLES SONT DESSINÉES, dans les trois damiers.
+
   Les COORDONNÉES s'affichent à la demande : les lettres (A B C…) en haut,
   alignées sur la première ligne de cases, et les numéros de ligne (1 2 3…)
   À GAUCHE SEULEMENT — à droite ils faisaient doublon et encombraient la
   marge du losange.
+
+  L'en-tête des lettres dépend LUI AUSSI du damier. L'ancien calcul, écrit
+  pour le seul losange, tassait les lettres deux fois trop serré sur le
+  nid d'abeilles (deux colonnes d'écart pour des alvéoles de quatre) et
+  les décalait de deux colonnes vers la gauche sur le damier à bordures,
+  à cause des « \ » qui précèdent les cases. TestEnteteAligneSurLesCases
+  mesure l'aplomb lettre par lettre, sur le rendu, pour les trois damiers.
 
   Chaque numéro suit le décalage de SA ligne : il est donc juste à gauche
   de ses propres cases et non perdu dans une marge lointaine, comme sur

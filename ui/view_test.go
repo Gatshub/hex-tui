@@ -69,30 +69,77 @@ func TestBoardGeometry(t *testing.T) {
 	}
 }
 
-// Chaque clic au centre d'une case doit renvoyer cette case.
+// TestCellAtRoundTrip vérifie que cliquer sur une case DESSINÉE la sélectionne,
+// dans les trois damiers.
+//
+// La colonne cliquée est relevée SUR LE RENDU — là où les cases sont réellement
+// dessinées — et non recalculée avec les formules de cellAt : sinon le test ne
+// vérifierait que la cohérence du code avec lui-même, et laisserait passer
+// précisément le défaut qui nous occupe, une souris restée sur la géométrie du
+// losange pendant que le damier dessinait autre chose.
 func TestCellAtRoundTrip(t *testing.T) {
-	m := testModel(120, 40)
-	m = m.start(11)
-	lines := m.buildPlay()
-	top := (m.height - len(lines)) / 2
-	gridY := top + 2
-	gridX := (m.width - m.boardWidth()) / 2
+	const n = 7
+	for style, nom := range boardStyles {
+		for _, coords := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/coords=%v", nom, coords), func(t *testing.T) {
+				m := testModel(120, 40)
+				m = m.start(n)
+				m.styleIdx = style
+				m.showCoords = coords
 
-	for r := 0; r < 11; r++ {
-		for q := 0; q < 11; q++ {
-			x := gridX + indent(r) + q*(cellW+cellGap) + cellW/2
-			y := gridY + r
-			gr, gq, ok := m.cellAt(x, y)
-			if !ok {
-				t.Fatalf("clic sur (%d,%d) refusé", r, q)
-			}
-			if gr != r || gq != q {
-				t.Fatalf("clic (%d,%d) → (%d,%d), attendu (%d,%d)", x, y, gr, gq, r, q)
-			}
+				lines := m.buildPlay()
+				top := (m.height - len(lines)) / 2
+				gridY := top + 2 + borderLines(style)
+				// gridX reste la gauche du BLOC : les colonnes relevées sur le
+				// rendu se comptent depuis elle, marge des coordonnées
+				// comprise. cellAt, lui, part de la gauche des CASES.
+				gridX := (m.width - m.boardWidth()) / 2
+				if coords {
+					gridY++
+				}
+				per := linesPerCell(style)
+				bloc := m.boardLines()
+				debut := borderLines(style)
+				if coords {
+					debut++ // l'en-tête des lettres
+				}
+
+				for r := 0; r < n; r++ {
+					dessin := []rune(bloc[debut+r*per])
+					// Colonnes où une case est réellement dessinée.
+					var cases []int
+					if style == styleHoney {
+						for i, ch := range dessin {
+							if ch == '/' {
+								cases = append(cases, i+1) // l'intérieur de l'alvéole
+							}
+						}
+					} else {
+						for i, ch := range dessin {
+							if ch == '·' || ch == '⬢' || ch == '⬡' {
+								cases = append(cases, i)
+							}
+						}
+					}
+					if len(cases) != n {
+						t.Fatalf("ligne %d : %d cases dessinées, attendu %d", r, len(cases), n)
+					}
+					for q, col := range cases {
+						gr, gq, ok := m.cellAt(gridX+col, gridY+r*per)
+						if !ok {
+							t.Errorf("clic sur la case dessinée (%d,%d) refusé", r, q)
+							continue
+						}
+						if gr != r || gq != q {
+							t.Errorf("clic sur la case (%d,%d) → (%d,%d)", r, q, gr, gq)
+						}
+					}
+				}
+				if _, _, ok := m.cellAt(0, 0); ok {
+					t.Error("un clic hors plateau devrait être refusé")
+				}
+			})
 		}
-	}
-	if _, _, ok := m.cellAt(0, 0); ok {
-		t.Fatal("un clic hors plateau devrait être refusé")
 	}
 }
 

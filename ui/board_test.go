@@ -94,6 +94,15 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 				if coords {
 					debut++ // l'en-tête des lettres
 				}
+				// Un demi-pas par ligne de cases. Les deux valeurs sont
+				// écrites ICI, volontairement : c'est la géométrie attendue,
+				// et non celle que le code calcule — sinon le test ne
+				// vérifierait rien. 1 colonne pour le losange (case d'une
+				// colonne), 2 pour le nid d'abeilles (alvéole de quatre).
+				pas := 1
+				if style == styleHoney {
+					pas = 2
+				}
 				prev := -1
 				for r := 0; r < 7; r++ {
 					// On mesure sur la ligne BRUTE, sans rien retirer : le
@@ -106,9 +115,9 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 						t.Errorf("ligne de cases %d : aucun caractère visible", r)
 						continue
 					}
-					if prev >= 0 && col-prev != rowOff {
+					if prev >= 0 && col-prev != pas {
 						t.Errorf("ligne de cases %d : décalage %d, attendu %d (un demi-pas)",
-							r, col-prev, rowOff)
+							r, col-prev, pas)
 					}
 					prev = col
 				}
@@ -176,6 +185,70 @@ func TestBorduresNordSud(t *testing.T) {
 			t.Errorf("bord %s : %d..%d sort de sa ligne %d..%d — il dépasserait le losange",
 				c.nom, bordDebut, bordFin, rowDebut, rowFin)
 		}
+	}
+}
+
+// TestEnteteAligneSurLesCases vérifie que les lettres de colonnes tombent sur
+// le CONTENU de leurs cases, dans les trois damiers.
+//
+// Le défaut trouvé : l'en-tête était calculé avec la seule géométrie du losange
+// (une colonne par case), quel que soit le damier. Sur le nid d'abeilles, dont
+// l'alvéole fait quatre colonnes, les lettres se tassaient donc deux fois trop
+// serré ; sur le damier à bordures, elles étaient décalées de deux colonnes
+// vers la gauche, à cause des « \ » qui précèdent les cases.
+//
+// Le contrôle part du RENDU : on repère les cases sur la première ligne de
+// cases, et on exige que chaque lettre soit à l'aplomb de la sienne.
+func TestEnteteAligneSurLesCases(t *testing.T) {
+	for style, nom := range boardStyles {
+		t.Run(nom, func(t *testing.T) {
+			m := damierTest(style, true)
+			lines := m.boardLines()
+			entete := []rune(lines[0])
+			premiere := []rune(lines[1+borderLines(style)])
+
+			// Colonnes du CONTENU des cases, relevées sur le dessin.
+			var cases []int
+			if style == styleHoney {
+				// L'intérieur d'une alvéole commence juste après son « / ».
+				for i, ch := range premiere {
+					if ch == '/' {
+						cases = append(cases, i+1)
+					}
+				}
+			} else {
+				// Une case de losange porte un marqueur : · ou une pierre.
+				for i, ch := range premiere {
+					if ch == '·' || ch == '⬢' || ch == '⬡' {
+						cases = append(cases, i)
+					}
+				}
+			}
+			if len(cases) != m.board.N {
+				t.Fatalf("%d cases repérées sur la première ligne, attendu %d",
+					len(cases), m.board.N)
+			}
+
+			colonne := func(lettre rune) int {
+				for i, ch := range entete {
+					if ch == lettre {
+						return i
+					}
+				}
+				return -1
+			}
+			for q, want := range cases {
+				lettre := rune('A' + q)
+				got := colonne(lettre)
+				if got < 0 {
+					t.Fatalf("lettre %q absente de l'en-tête", string(lettre))
+				}
+				if got != want {
+					t.Errorf("lettre %q en colonne %d, mais sa case est en %d",
+						string(lettre), got, want)
+				}
+			}
+		})
 	}
 }
 

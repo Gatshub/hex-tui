@@ -375,6 +375,22 @@ func (m Model) assemble(lines []string) string {
 
 // -------------------------------------------------------------- souris --
 
+// cellGeom : de combien les cases sont décalées sur une ligne du damier, quel
+// est le pas d'une case à la suivante, et quelle largeur est cliquable. Comme
+// rowStep, cela dépend du damier : une case de losange fait une colonne, une
+// alvéole en fait quatre, et le damier à bordures précède ses cases de deux
+// « \ ».
+func (m Model) cellGeom() (lead, step, hit int) {
+	switch m.styleIdx {
+	case styleBordered:
+		return 2, cellW + cellGap, cellW
+	case styleHoney:
+		return 0, honeyCell, honeyCell // l'alvéole entière, bords compris
+	default:
+		return 0, cellW + cellGap, cellW
+	}
+}
+
 // cellAt convertit des coordonnées terminal en (ligne, colonne) du plateau. Il
 // doit suivre exactement le damier choisi : nombre de lignes par case, décalage
 // en demi-pas, et marge des coordonnées s'ils sont affichés.
@@ -399,15 +415,16 @@ func (m Model) cellAt(x, y int) (int, int, bool) {
 	if y < gridY || r < 0 || r >= m.board.N {
 		return 0, 0, false
 	}
-	lx := x - gridX - indent(r)
+	lead, step, hit := m.cellGeom()
+	lx := x - gridX - m.rowIndent(r) - lead
 	if lx < 0 {
 		return 0, 0, false
 	}
-	q := lx / (cellW + cellGap)
+	q := lx / step
 	if q < 0 || q >= m.board.N {
 		return 0, 0, false
 	}
-	if lx%(cellW+cellGap) >= cellW {
+	if lx%step >= hit {
 		return 0, 0, false // entre deux cases
 	}
 	return r, q, true

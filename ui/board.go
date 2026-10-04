@@ -30,6 +30,18 @@ const (
 // faisaient doublon et encombraient la marge du losange.
 const coordsMargin = 3
 
+// honeyCell : largeur d'une alvéole, en colonnes. Le côté est partagé avec
+// l'alvéole voisine, donc quatre colonnes suffisent : « / », deux colonnes
+// intérieures, « \ ».
+const honeyCell = 4
+
+// honeyStep : décalage d'une rangée d'alvéoles sur la précédente, soit la
+// MOITIÉ d'une alvéole. C'est ce demi-pas qui fait EMBOÎTER les rangées. Avec
+// le décalage du losange (1 — juste, car sa case ne fait qu'une colonne), les
+// alvéoles se chevauchent de trois colonnes sur quatre et le dessin n'est plus
+// un nid d'abeilles.
+const honeyStep = honeyCell / 2
+
 // boardRow est une ligne du dessin. row vaut -1 pour une ligne qui n'est PAS une
 // ligne de cases (les bordures Est–Ouest du damier n° 1) : ces lignes ne doivent
 // pas recevoir de numéro.
@@ -86,8 +98,8 @@ func (m Model) boardRawWidth() int {
 		// « \ » + espace + cases + espace + « \ »
 		return n*cellW + (n-1)*cellGap + indent(n-1) + 4
 	case styleHoney:
-		// chaque alvéole occupe 4 colonnes (le côté est partagé)
-		return n*4 + indent(n-1)
+		// chaque alvéole occupe honeyCell colonnes (le côté est partagé)
+		return n*honeyCell + honeyStep*(n-1)
 	default:
 		return n*cellW + (n-1)*cellGap + indent(n-1)
 	}
@@ -108,6 +120,28 @@ func (m Model) pad(line string) string {
 		return line + strings.Repeat(" ", d)
 	}
 	return line
+}
+
+// rowStep : décalage d'une ligne de cases à la suivante, en colonnes, dans le
+// damier courant. Un demi-pas pour le losange (sa case fait une colonne), une
+// demi-alvéole pour le nid d'abeilles (la sienne en fait quatre).
+func (m Model) rowStep() int {
+	if m.styleIdx == styleHoney {
+		return honeyStep
+	}
+	return rowOff
+}
+
+// rowIndent : décalage horizontal, en colonnes, de la ligne de cases r dans le
+// damier courant.
+//
+// Il dépend du damier, et c'est le piège de ce fichier : le losange (et le
+// damier à bordures, qui est le même) décale d'un demi-pas de 1 colonne, tandis
+// que le nid d'abeilles décale de honeyStep, parce que son alvéole fait quatre
+// colonnes. Confondre les deux fait dériver les numéros de ligne par rapport à
+// leurs cases.
+func (m Model) rowIndent(r int) int {
+	return m.rowStep() * r
 }
 
 // boardLines rend le plateau dans le damier choisi, coordonnées comprises.
@@ -131,7 +165,7 @@ func (m Model) boardLines() []string {
 				// réserve la même marge pour que tout reste aligné.
 				line = strings.Repeat(" ", coordsMargin) + line
 			} else {
-				creux := strings.Repeat(" ", indent(b.row))
+				creux := strings.Repeat(" ", m.rowIndent(b.row))
 				line = creux + fmt.Sprintf("%2d ", b.row+1) +
 					strings.TrimPrefix(b.text, creux)
 			}
@@ -235,15 +269,21 @@ func (m Model) borderedRowWidth() int {
 }
 
 // rowsHoneycomb : le nid d'abeilles. Chaque case est un hexagone de deux lignes
-// larges de quatre colonnes. Deux cases voisines PARTAGENT un côté : c'est ce
-// qui rend l'adjacence visible.
+// larges de honeyCell colonnes. Deux cases voisines PARTAGENT un côté : c'est
+// ce qui rend l'adjacence visible.
+//
+// Les deux lignes d'une rangée partent de la MÊME colonne — une alvéole a un
+// sommet plat en haut comme en bas — et la rangée suivante est décalée d'un
+// DEMI-PAS : honeyStep, la moitié d'une alvéole. C'est ce décalage, et non
+// celui du losange, qui fait emboîter les rangées au lieu de les empiler.
 func (m Model) rowsHoneycomb() []boardRow {
 	n := m.board.N
 	rows := make([]boardRow, 0, 2*n)
 	for r := 0; r < n; r++ {
+		creux := strings.Repeat(" ", m.rowIndent(r))
 		var top, bot strings.Builder
-		top.WriteString(strings.Repeat(" ", indent(r)))
-		bot.WriteString(strings.Repeat(" ", indent(r)))
+		top.WriteString(creux)
+		bot.WriteString(creux)
 		for q := 0; q < n; q++ {
 			mark, st := m.cellMark(r, q)
 			// L'intérieur de l'alvéole fait deux colonnes. Sur une case vide on
@@ -263,18 +303,35 @@ func (m Model) rowsHoneycomb() []boardRow {
 	return rows
 }
 
+// coordCol : colonne de la LETTRE de la colonne q dans l'en-tête du damier
+// courant. Elle doit tomber sur le CONTENU de la case, jamais à côté, et le
+// calcul dépend donc du damier : une case de losange fait une colonne, une
+// alvéole en fait quatre, et le damier à bordures décale ses cases de ses deux
+// caractères « \ ».
+func (m Model) coordCol(q int) int {
+	switch m.styleIdx {
+	case styleBordered:
+		return indent(0) + 2 + q*(cellW+cellGap) // « \ » puis les cases
+	case styleHoney:
+		return q*honeyCell + 1 // première des deux colonnes intérieures
+	default:
+		return indent(0) + q*(cellW+cellGap)
+	}
+}
+
 // coordHeader : les lettres de colonnes, alignées sur la PREMIÈRE ligne de
 // cases — comme sur les diagrammes de HexWiki.
 func (m Model) coordHeader() string {
 	n := m.board.N
 	var sb strings.Builder
-	sb.WriteString(strings.Repeat(" ", indent(0)))
+	col := 0
 	for q := 0; q < n; q++ {
-		if q > 0 {
-			sb.WriteString(strings.Repeat(" ", cellGap))
+		c := m.coordCol(q)
+		if c > col {
+			sb.WriteString(strings.Repeat(" ", c-col))
 		}
-		lettre := string(rune('A' + q))
-		sb.WriteString(styleCoord.Width(cellW).Align(lipgloss.Center).Render(lettre))
+		sb.WriteString(styleCoord.Render(string(rune('A' + q))))
+		col = c + 1
 	}
 	return sb.String()
 }
