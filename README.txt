@@ -282,6 +282,16 @@ TOUCHES
     q                    quitter
     souris               1er clic : viser la case, 2e clic : poser
 
+  À la FIN d'une partie, l'écran change de touches :
+
+    Entrée / Espace      rejouer, à la taille choisie
+    s                    RÉGLAGES — le même panneau qu'en cours de partie
+    Échap                revenir au menu principal
+    q                    quitter
+
+  L'écran de fin ANNONCE ces quatre touches, et les gère toutes les quatre.
+  Ce n'était pas le cas de « s », qui était affiché sans rien faire.
+
   j et k sont les pendants de ↓ et ↑, comme au menu et comme dans vi.
   Attention : ce n'est PAS le hjkl complet de vi — sur un réseau hexagonal
   il y a six directions, et h j k l n'en couvrent que quatre. Les deux
@@ -289,8 +299,24 @@ TOUCHES
   Maj+↑ / Maj+↓, ou u et b.
 
   (j et k avaient été ANNONCÉS dans l'aide sans être implémentés : ils ne
-  faisaient rien. TestTouchesDeDeplacement part maintenant de la liste des
-  touches annoncées, et non des cas codés, pour que ce genre d'écart se voie.)
+  faisaient rien. Puis, dans la foulée, MÊME écart pour « s » : l'écran de
+  FIN DE PARTIE affichait « s réglages » alors que la touche ne faisait rien.
+  Le motif n'est donc pas anecdotique — « l'aide promet, le code ne tient
+  pas » — et il méritait mieux qu'un second correctif ponctuel.)
+
+  Deux tests, deux rôles :
+
+    - TestTouchesDeDeplacement énumère les touches de déplacement et exige
+      que chacune bouge le curseur de la case attendue. Sa liste est ÉCRITE
+      DANS LE TEST : c'est un filet contre la régression de ces six
+      directions-là, pas contre l'ajout d'une touche annoncée ailleurs.
+
+    - TestTouchesAnnonceesALaFin LIT la liste que l'écran affiche
+      (annoncesFin, ui/view.go) et exige que chaque touche annoncée fasse
+      quelque chose — et qu'une attente soit déclarée pour elle. Ajouter une
+      annonce sans la câbler fait donc échouer le test. C'est ce contrôle-là
+      qui manquait, et c'est celui que la première version de ce paragraphe
+      croyait déjà avoir.)
 
   Note : depuis le passage au losange, les six directions sont les MÊMES
   sur toutes les lignes. Il n'y a plus à se demander si l'on est sur une

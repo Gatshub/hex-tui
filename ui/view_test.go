@@ -276,3 +276,66 @@ func TestPreview(t *testing.T) {
 	w.screen = scrWin
 	fmt.Printf("\n===== victoire =====\n%s\n", w.View())
 }
+
+// finDePartie construit l'état d'une partie terminée, victoire Nord–Sud (la
+// colonne 0 relie le haut au bas). C'est l'écran sur lequel « s » ne faisait
+// rien.
+func finDePartie() Model {
+	m := testModel(100, 30)
+	m = m.start(7)
+	for r := 0; r < 7; r++ {
+		m.board.Set(r, 0, hex.NordSud)
+	}
+	m.winner = hex.NordSud
+	m.winPath = m.board.WinningCells(hex.NordSud)
+	m.screen = scrWin
+	return m
+}
+
+// TestTouchesAnnonceesALaFin part de la LISTE des touches que l'écran de fin
+// annonce (annoncesFin) et exige que CHACUNE fasse quelque chose.
+//
+// Le test ne recopie pas la liste, il la lit : une touche annoncée mais inerte
+// ne peut donc plus passer. C'est exactement le défaut trouvé avec « s »,
+// affiché à l'écran alors que winKey ne le gérait pas.
+//
+// Une touche annoncée sans attente déclarée fait également échouer le test : on
+// ne peut pas ajouter une annonce sans dire ce qu'elle doit produire.
+func TestTouchesAnnonceesALaFin(t *testing.T) {
+	attendu := map[string]struct {
+		msg  tea.KeyMsg
+		quoi string
+		fait func(apres Model, cmd tea.Cmd) bool
+	}{
+		"enter": {
+			tea.KeyMsg{Type: tea.KeyEnter}, "commencer une nouvelle partie",
+			func(m Model, _ tea.Cmd) bool { return m.screen == scrPlay },
+		},
+		"s": {
+			runeKey('s'), "ouvrir les réglages",
+			func(m Model, _ tea.Cmd) bool { return m.showSettings },
+		},
+		"esc": {
+			tea.KeyMsg{Type: tea.KeyEsc}, "revenir au menu",
+			func(m Model, _ tea.Cmd) bool { return m.screen == scrMenu },
+		},
+		"q": {
+			runeKey('q'), "quitter",
+			func(_ Model, cmd tea.Cmd) bool { return cmd != nil },
+		},
+	}
+
+	for _, a := range annoncesFin {
+		c, declare := attendu[a.key]
+		if !declare {
+			t.Errorf("la touche %q est annoncée « %s », mais le test ne dit pas ce qu'elle doit faire",
+				a.key, a.label)
+			continue
+		}
+		apres, cmd := finDePartie().Update(c.msg)
+		if !c.fait(apres.(Model), cmd) {
+			t.Errorf("touche %q (annoncée « %s ») : elle devrait %s — mais rien ne se passe",
+				a.key, a.label, c.quoi)
+		}
+	}
+}

@@ -240,8 +240,39 @@ func (m Model) viewWin() string {
 		Render("★  "+m.winner.String()+" relie ses deux bords — victoire !  ★"))
 	lines = append(lines, styleMuted.Render(fmt.Sprintf("en %d coups", m.board.Moves)))
 	lines = append(lines, "")
-	lines = append(lines, styleMuted.Render("Entrée nouvelle partie   ·   s réglages   ·   q quitter"))
+	lines = append(lines, styleMuted.Render(bandeauFin()))
 	return m.assemble(lines)
+}
+
+// annonce : une touche affichée à l'écran de fin, avec le libellé qui l'annonce.
+type annonce struct {
+	key   string // la touche, telle que Bubble Tea la transmet
+	label string // ce que l'écran écrit
+}
+
+// annoncesFin liste les touches de l'écran de fin. Le bandeau affiché est
+// construit À PARTIR de cette liste, et le test en tire les touches qu'il
+// exerce : l'écran ne peut donc plus annoncer une touche que winKey ne gère
+// pas, ni l'inverse.
+//
+// C'est l'erreur commise deux fois dans ce projet — l'aide annonçait « j » et
+// « k » sans qu'ils déplacent le curseur, puis « s réglages » à la fin d'une
+// partie sans que « s » fasse quoi que ce soit. Une aide qui ment est pire
+// qu'une aide absente : on croit le programme cassé.
+var annoncesFin = []annonce{
+	{"enter", "Entrée nouvelle partie"},
+	{"s", "s réglages"},
+	{"esc", "Échap menu"},
+	{"q", "q quitter"},
+}
+
+// bandeauFin rend le bandeau d'aide de l'écran de fin à partir de annoncesFin.
+func bandeauFin() string {
+	labels := make([]string, 0, len(annoncesFin))
+	for _, a := range annoncesFin {
+		labels = append(labels, a.label)
+	}
+	return strings.Join(labels, "   ·   ")
 }
 
 // ------------------------------------------------------------- fragments --

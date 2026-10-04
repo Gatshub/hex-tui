@@ -244,12 +244,21 @@ func (m Model) playKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// winKey gère l'écran de fin de partie.
+//
+// Les touches traitées ici sont EXACTEMENT celles que annoncesFin annonce à
+// l'écran. La touche « s » manquait : l'écran affichait « s réglages » alors
+// qu'elle ne faisait rien — même erreur que pour « j » et « k », une aide qui
+// annonce ce que le code ne fait pas. TestTouchesAnnonceesALaFin verrouille
+// l'accord entre cette liste et cette fonction.
 func (m Model) winKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "q":
 		return m, tea.Quit
 	case "esc":
 		m.screen = scrMenu
+	case "s", "?":
+		m.openSettings()
 	case "enter", " ":
 		return m.start(Sizes[m.sizeIdx]), nil
 	}
