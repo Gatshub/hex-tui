@@ -108,8 +108,14 @@ func (m Model) cellMark(r, q int) (string, lipgloss.Style) {
 		st = styleGood
 	}
 	if m.screen != scrWin && r == m.cursorR && q == m.cursorC {
+		// Le curseur change le FOND, pas la teinte du pion. Repeindre le pion
+		// dans la couleur du curseur effaçait son camp : sous le curseur, une
+		// pierre Nord-Sud et une pierre Est-Ouest devenaient identiques. On
+		// ne voyait plus à qui appartenait la pierre qu'on venait de poser —
+		// et le damier devient franchement illisible sur une vue tournée, où
+		// les deux camps forment des diagonales parallèles.
 		st = lipgloss.NewStyle().
-			Foreground(colCursorFG).
+			Foreground(st.GetForeground()).
 			Background(colCursorBG).
 			Bold(true)
 	}

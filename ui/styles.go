@@ -17,7 +17,6 @@ var (
 	colGreen    = lipgloss.AdaptiveColor{Light: "#2f6b3f", Dark: "#9ece6a"}
 	colWarn     = lipgloss.AdaptiveColor{Light: "#8a5a12", Dark: "#e0af68"}
 	colCursorBG = lipgloss.AdaptiveColor{Light: "#b9c6f0", Dark: "#3d59a1"}
-	colCursorFG = lipgloss.AdaptiveColor{Light: "#1a1b26", Dark: "#ffffff"}
 	colBorder   = lipgloss.AdaptiveColor{Light: "#8a8fa3", Dark: "#3b4261"}
 )
 

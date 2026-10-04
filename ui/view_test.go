@@ -342,6 +342,47 @@ func TestBordsMarquesDansLeLosange(t *testing.T) {
 	}
 }
 
+// TestCurseurGardeLaCouleurDuPion : sous le curseur, une pierre doit rester
+// reconnaissable. Le curseur change le FOND, pas la teinte du camp.
+//
+// Défaut trouvé en reconstruisant le plateau d'un screenshot, pierre par
+// pierre : sous le curseur, une pierre Nord-Sud et une pierre Est-Ouest étaient
+// peintes de la MÊME couleur, celle du curseur, donc indiscernables. Sur le
+// losange de hexagones, où les deux camps forment des diagonales parallèles,
+// cela suffit à rendre le damier illisible.
+func TestCurseurGardeLaCouleurDuPion(t *testing.T) {
+	for style, nom := range boardStyles {
+		t.Run(nom, func(t *testing.T) {
+			m := testModel(160, 60)
+			m = m.start(7)
+			m.styleIdx = style
+
+			for _, c := range []struct {
+				joueur  hex.Player
+				attendu lipgloss.TerminalColor
+			}{
+				{hex.NordSud, colNordSud},
+				{hex.EstOuest, colEstOuest},
+			} {
+				m.board = hex.NewBoard(7)
+				m.board.Set(3, 3, c.joueur)
+				m.cursorR, m.cursorC = 3, 3
+				if _, st := m.cellMark(3, 3); st.GetForeground() != c.attendu {
+					t.Errorf("sous le curseur, une pierre %v est peinte en %v, attendu %v",
+						c.joueur, st.GetForeground(), c.attendu)
+				}
+			}
+
+			// Une case VIDE sous le curseur garde le gris des cases libres.
+			m.board = hex.NewBoard(7)
+			m.cursorR, m.cursorC = 3, 3
+			if _, st := m.cellMark(3, 3); st.GetForeground() != lipgloss.TerminalColor(colMuted) {
+				t.Errorf("sous le curseur, une case vide est peinte en %v, attendu le gris", st.GetForeground())
+			}
+		})
+	}
+}
+
 // TestTouchesDeDeplacement confronte l'aide au comportement réel : CHAQUE
 // touche annoncée doit vraiment déplacer le curseur.
 //
