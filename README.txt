@@ -404,11 +404,19 @@ TROIS DAMIERS, ET LES COORDONNÉES
   r=n-1) — et ils sont tracés en lignes pleines. Les deux bords penchés
   sont EST et OUEST, tracés avec des « \ ».
 
-  ATTENTION à la longueur de ces lignes pleines : elles font la largeur
-  d'UNE LIGNE DE CASES, pas celle du bloc entier. Le losange s'inclinant
-  d'un demi-pas par ligne, une bordure à la largeur du bloc dépasserait
-  de n-1 colonnes — celle du haut du côté droit, celle du bas du côté
-  gauche. C'était le défaut, corrigé et verrouillé par TestBorduresNordSud.
+  ATTENTION à la longueur de ces lignes pleines : un losange n'a pas de
+  bord horizontal, ses QUATRE côtés sont penchés. Aucun bord ne peut donc
+  couvrir toute la largeur d'une ligne de cases. Chacun fait UN CRAN DE
+  MOINS que sa ligne, et se rogne du côté EXTÉRIEUR :
+
+      Nord   commence avec sa ligne, s'arrête un cran avant la fin
+      Sud    commence un cran après le début, finit avec sa ligne
+
+  C'est le tracé du damier compact à bordures de HexWiki, relevé colonne
+  par colonne (sa ligne 1 va de 10 à 34, sa bordure Nord de 10 à 33).
+  TestBorduresNordSud verrouille la longueur ET la position, mesurées sur
+  le rendu réel : deux corrections successives sur ce seul détail ont
+  montré que l'œil ne suffisait pas à trancher.
 
   Le nid d'abeilles est le seul où l'on VOIT les six voisins, puisqu'ils
   partagent un côté. C'est la réponse à la question « cette case

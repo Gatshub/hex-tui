@@ -176,10 +176,21 @@ func (m Model) rowsRhombus() []boardRow {
 //
 // Les bords NORD et SUD sont les deux bords HORIZONTAUX, en haut et en bas du
 // losange : ce sont eux que relie le camp NordSud (r=0 et r=n-1). Ils sont donc
-// tracés en lignes pleines, et ils font EXACTEMENT la largeur d'une ligne de
-// cases — pas celle du bloc entier. Sans cela ils dépassent du losange : celui
-// du haut du côté droit, celui du bas du côté gauche, puisque chaque ligne de
-// cases s'incline d'un demi-pas vers la droite.
+// tracés en lignes pleines.
+//
+// LES QUATRE BORDS SONT PENCHÉS. C'est le point qu'on rate : un losange n'a
+// pas un bord horizontal plus long que les autres, ses quatre côtés suivent la
+// même inclinaison d'un demi-pas. Aucun bord ne peut donc faire toute la
+// largeur d'une ligne de cases : il en dépasse du côté vers lequel le losange
+// s'incline. Chaque bord fait UN CRAN DE MOINS que sa ligne, et il est rogné du
+// côté EXTÉRIEUR :
+//
+//   - le bord Nord commence avec sa ligne et s'arrête un cran avant la fin ;
+//   - le bord Sud commence un cran après le début de sa ligne et finit avec.
+//
+// C'est exactement le tracé du damier « compact » à bordures de HexWiki
+// (Unicode_and_ASCII_boards), vérifié colonne par colonne : la ligne 1 y porte
+// ses « \ » en 10 et 34 (25 colonnes) et la bordure Nord court de 10 à 33.
 //
 // Les bords EST et OUEST sont les deux bords PENCHÉS (c=0 et c=n-1), tracés
 // avec des « \ » au début et à la fin de chaque ligne.
@@ -187,9 +198,8 @@ func (m Model) rowsBordered() []boardRow {
 	n := m.board.N
 	rows := make([]boardRow, 0, n+2)
 
-	// La longueur d'un bord Nord ou Sud est celle d'une ligne de cases :
-	// décorations « \ » comprises.
-	w := m.borderedRowWidth()
+	// Un cran de moins que la largeur d'une ligne de cases.
+	w := m.borderedRowWidth() - 1
 	bord := func(creux int) boardRow {
 		return boardRow{
 			text: strings.Repeat(" ", creux) + styleBorder.Render(strings.Repeat("■", w)),
@@ -213,12 +223,12 @@ func (m Model) rowsBordered() []boardRow {
 		rows = append(rows, boardRow{text: sb.String(), row: r})
 	}
 
-	rows = append(rows, bord(indent(n-1)))
+	rows = append(rows, bord(indent(n-1)+1))
 	return rows
 }
 
 // borderedRowWidth : largeur d'une ligne de cases du damier à bordures, ses
-// décorations « \ » comprises. C'est aussi la longueur des bords Nord et Sud.
+// décorations « \ » comprises. Les bords Nord et Sud font un cran de moins.
 func (m Model) borderedRowWidth() int {
 	n := m.board.N
 	return n*cellW + (n-1)*cellGap + 4 // « \ » + espace + cases + espace + « \ »

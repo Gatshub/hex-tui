@@ -121,13 +121,19 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 // pleines du damier à bordures.
 //
 // Ce sont les bords NORD et SUD (ceux que relie le camp NordSud, r=0 et r=n-1),
-// donc les deux bords HORIZONTAUX. Le défaut corrigé : elles étaient tracées à
-// la largeur du BLOC entier et dépassaient de n-1 colonnes — celle du haut à
-// droite, celle du bas à gauche — puisque chaque ligne de cases s'incline.
+// donc les deux bords HORIZONTAUX. Deux défauts ont été corrigés ici, et le
+// second expliquait le premier :
 //
-// Le contrôle est fait sur le RENDU réel : on compare la ligne de bordure à la
-// ligne de cases qu'elle coiffe, caractère par caractère, plutôt qu'à une
-// formule.
+//   - elles étaient tracées à la largeur du BLOC entier (+ n-1 colonnes) ;
+//   - puis à la largeur pleine d'une ligne de cases — encore un cran de trop.
+//     Un losange n'a pas de bord horizontal : ses quatre côtés sont penchés,
+//     donc aucun ne peut couvrir toute la largeur d'une ligne. Chaque bord fait
+//     un cran de MOINS que sa ligne et se rogne du côté extérieur — le Nord
+//     s'arrête un cran avant la fin, le Sud commence un cran après le début.
+//
+// C'est le tracé du damier compact à bordures de HexWiki, et le contrôle est
+// fait sur le RENDU réel : on compare chaque bord à la ligne de cases qu'il
+// coiffe, colonne par colonne.
 func TestBorduresNordSud(t *testing.T) {
 	m := damierTest(styleBordered, false)
 	lines := m.boardLines()
@@ -143,30 +149,32 @@ func TestBorduresNordSud(t *testing.T) {
 	}
 
 	cas := []struct {
-		nom    string
-		bord   int
-		lignes int // index de la ligne de cases coiffée
+		nom     string
+		bord    int
+		lignes  int // index de la ligne de cases coiffée
+		rognage int // de combien le bord commence APRÈS le début de sa ligne
 	}{
-		{"Nord", 0, 0},
-		{"Sud", len(lines) - 1, n - 1},
+		{"Nord", 0, 0, 0},
+		{"Sud", len(lines) - 1, n - 1, 1},
 	}
 	for _, c := range cas {
 		l := lines[c.bord]
 		got := strings.Count(l, "■")
 		bordDebut, bordFin := etendue(l)
 		rowDebut, rowFin := etendue(lines[borderLines(styleBordered)+c.lignes])
+		rowLargeur := rowFin - rowDebut
 
-		if bordFin-bordDebut != rowFin-rowDebut {
-			t.Errorf("bord %s : %d colonnes, la ligne %d en fait %d — la bordure dépasse le losange",
-				c.nom, bordFin-bordDebut, c.lignes+1, rowFin-rowDebut)
+		if got != rowLargeur-1 || bordFin-bordDebut != rowLargeur-1 {
+			t.Errorf("bord %s : %d colonnes de bordure (%d ■), la ligne %d en fait %d — attendu un cran de moins",
+				c.nom, bordFin-bordDebut, got, c.lignes+1, rowLargeur)
 		}
-		if got != rowFin-rowDebut {
-			t.Errorf("bord %s : %d cases de bordure, la ligne %d en fait %d",
-				c.nom, got, c.lignes+1, rowFin-rowDebut)
+		if want := rowDebut + c.rognage; bordDebut != want {
+			t.Errorf("bord %s : commence en colonne %d, attendu %d (sa ligne commence en %d)",
+				c.nom, bordDebut, want, rowDebut)
 		}
-		if bordDebut != rowDebut {
-			t.Errorf("bord %s : commence en colonne %d, la ligne %d commence en %d",
-				c.nom, bordDebut, c.lignes+1, rowDebut)
+		if bordDebut < rowDebut || bordFin > rowFin {
+			t.Errorf("bord %s : %d..%d sort de sa ligne %d..%d — il dépasserait le losange",
+				c.nom, bordDebut, bordFin, rowDebut, rowFin)
 		}
 	}
 }
