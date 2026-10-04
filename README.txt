@@ -415,6 +415,21 @@ TROIS DAMIERS, ET LES COORDONNÉES
   qu'il est vertical dans le nid d'abeilles. Le pas d'une alvéole est donc de
   6 colonnes (4 + 2), et la ligne suivante est décalée de la moitié, 3.
 
+  LES BORDS SONT DESSINÉS. Une case est bordée par ses voisines, sauf sur le
+  pourtour du plateau : là, personne ne dessine son côté. Trois manques, et
+  trois lignes de code — c'est ce que le joueur a vu :
+
+    - la PREMIÈRE case de chaque ligne n'a pas de voisine au nord-ouest :
+      son côté « __ » gauche manque ;
+    - la DERNIÈRE n'a pas de voisine au sud-est : son côté droit manque ;
+    - la dernière diagonale n'a AUCUNE ligne en dessous : ses cases n'ont
+      pas de bas.
+
+  Le premier jet de ce damier ne les dessinait pas, et le pourtour s'ouvrait.
+  Note : ce n'est PAS le même problème que sur le nid d'abeilles, où la place
+  est réellement prise par les « \ » et « / » du bas de l'alvéole. Ici la
+  place existe, il fallait juste l'occuper.
+
     ATTENTION aux coordonnées : le losange de hexagones N'EN MONTRE PAS. Ses
     lignes sont des diagonales, donc ni « la ligne 5 » ni « la colonne C » ne
     désignent une ligne du dessin. Les poser le long des bords est possible

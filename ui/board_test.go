@@ -365,8 +365,9 @@ func TestLosangeDeHexagones(t *testing.T) {
 	}
 
 	lines := m.boardLines()
-	if len(lines) != 2*n-1 {
-		t.Fatalf("%d lignes, attendu %d (une par diagonale)", len(lines), 2*n-1)
+	// Les 2n-1 diagonales, plus la ligne qui ferme le bas de la dernière.
+	if len(lines) != 2*n {
+		t.Fatalf("%d lignes, attendu %d (une par diagonale + le bas)", len(lines), 2*n)
 	}
 
 	// La diagonale du milieu porte n alvéoles : elle doit remplir la largeur du
@@ -376,12 +377,18 @@ func TestLosangeDeHexagones(t *testing.T) {
 			got, m.boardRawWidth())
 	}
 
+	// Le bas de la dernière diagonale : « \__/ » sous son unique case.
+	if want := strings.Repeat(" ", demiPas*(n-1)+separateur) + `\__/`; strings.TrimRight(lines[2*n-1], " ") != want {
+		t.Errorf("le bas du losange est %q, attendu %q",
+			strings.TrimRight(lines[2*n-1], " "), want)
+	}
+
 	play := m.buildPlay()
 	top := (m.height - len(play)) / 2
 	gridY := top + 2
 	gridX := (m.width - m.boardWidth()) / 2
 
-	for k, l := range lines {
+	for k, l := range lines[:2*n-1] {
 		d := k - (n - 1)
 		cells := diamondLine(n, d)
 
@@ -393,9 +400,16 @@ func TestLosangeDeHexagones(t *testing.T) {
 			t.Errorf("ligne %d (d=%d) : %d cases dessinées, attendu %d",
 				k, d, got, len(cells))
 		}
+		// Les bords : la ligne doit commencer et finir par son « __ ».
+		if !strings.HasPrefix(strings.TrimLeft(l, " "), "__") {
+			t.Errorf("ligne %d : pas de bord nord-ouest", k)
+		}
+		if !strings.HasSuffix(strings.TrimRight(l, " "), "__") {
+			t.Errorf("ligne %d : pas de bord sud-est", k)
+		}
 		for i, c := range cells {
-			// Le contenu de la case suit son « / ».
-			x := gridX + demiPas*absInt(d) + i*pas + 1
+			// Le contenu de la case suit son « / », lui-même après le bord.
+			x := gridX + demiPas*absInt(d) + separateur + i*pas + 1
 			gr, gq, ok := m.cellAt(x, gridY+k)
 			if !ok {
 				t.Errorf("ligne %d, case %d : clic refusé", k, i)

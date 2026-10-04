@@ -404,7 +404,7 @@ func (m Model) diamondCellAt(lx, ly int) (int, int, bool) {
 		return 0, 0, false
 	}
 	d := ly - (n - 1)
-	x := lx - diamondIndent(d)
+	x := lx - diamondIndent(d) - diamondSep
 	if x < 0 {
 		return 0, 0, false
 	}

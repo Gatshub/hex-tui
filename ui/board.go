@@ -127,9 +127,9 @@ func (m Model) boardRawWidth() int {
 		// chaque alvéole occupe honeyCell colonnes (le côté est partagé)
 		return n*honeyCell + honeyStep*(n-1)
 	case styleDiamond:
-		// La ligne la plus longue est la diagonale du milieu : n alvéoles
-		// séparées par un « __ », sans séparateur final.
-		return n*diamondPeriod - diamondSep
+		// La ligne la plus longue est la diagonale du milieu : un « __ » de
+		// bord, n alvéoles, n-1 séparateurs, un « __ » de bord.
+		return n*diamondPeriod + diamondSep
 	default:
 		return n*cellW + (n-1)*cellGap + indent(n-1)
 	}
@@ -391,13 +391,26 @@ func diamondIndent(d int) int {
 // allongé, et d'où le fait que les cases voisines DANS une ligne soient ici
 // séparées par un « __ » : dans cette orientation, leur côté partagé est
 // horizontal, alors qu'il est vertical dans le nid d'abeilles.
+//
+// LES BORDS SONT DESSINÉS. Une case est bordée par ses voisines, sauf sur le
+// pourtour du plateau : là, personne ne dessine son côté. Trois manques, et
+// trois lignes de code :
+//
+//   - la PREMIÈRE case de chaque ligne n'a pas de voisine au nord-ouest : son
+//     côté « __ » gauche manque ;
+//   - la DERNIÈRE n'a pas de voisine au sud-est : son côté droit manque ;
+//   - la dernière diagonale n'a AUCUNE ligne en dessous : ses cases n'ont pas
+//     de bas.
+//
+// Sans ces trois-là, le pourtour s'ouvre — c'est ce que le joueur a vu.
 func (m Model) rowsDiamond() []boardRow {
 	n := m.board.N
-	rows := make([]boardRow, 0, 2*n-1)
+	rows := make([]boardRow, 0, 2*n)
 	for k := 0; k < 2*n-1; k++ {
 		d := k - (n - 1)
 		var sb strings.Builder
 		sb.WriteString(strings.Repeat(" ", diamondIndent(d)))
+		sb.WriteString(strings.Repeat("_", diamondSep)) // bord nord-ouest
 		for i, c := range diamondLine(n, d) {
 			if i > 0 {
 				sb.WriteString(strings.Repeat("_", diamondSep))
@@ -405,10 +418,16 @@ func (m Model) rowsDiamond() []boardRow {
 			mark, st := m.cellMark(c[0], c[1])
 			sb.WriteString("/" + st.Width(diamondCell-2).Align(lipgloss.Center).Render(mark) + "\\")
 		}
+		sb.WriteString(strings.Repeat("_", diamondSep)) // bord sud-est
 		// Ligne de décoration : aucune ligne du dessin ne porte un numéro de
 		// rangée, puisque ce sont des diagonales.
 		rows = append(rows, boardRow{text: sb.String(), row: -1})
 	}
+
+	// Le bas de la dernière diagonale : son « \__/ », qui ferme ses cases.
+	bas := strings.Repeat(" ", diamondIndent(n-1)+diamondSep)
+	bas += "\\" + strings.Repeat("_", diamondSep) + "/"
+	rows = append(rows, boardRow{text: bas, row: -1})
 	return rows
 }
 
