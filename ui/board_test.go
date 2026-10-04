@@ -68,9 +68,9 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 				// Lignes attendues : une par case (deux pour le nid d'abeilles),
 				// plus les deux bordures du damier n° 1, plus l'en-tête des
 				// lettres si les coordonnées sont affichées.
-				attendu := 7 * linesPerCell(style)
+				attendu := 7*linesPerCell(style) + borderLines(style)
 				if style == styleBordered {
-					attendu += 2 // les deux lignes de bords Nord–Sud
+					attendu++ // la bordure Sud, après les cases
 				}
 				if coords {
 					attendu++
@@ -246,6 +246,56 @@ func TestEnteteAligneSurLesCases(t *testing.T) {
 				if got != want {
 					t.Errorf("lettre %q en colonne %d, mais sa case est en %d",
 						string(lettre), got, want)
+				}
+			}
+		})
+	}
+}
+
+// TestNidDabeillesFermeLeHaut vérifie que la première rangée du nid d'abeilles
+// est bien fermée par sa ligne « __ » — celle que la référence HexWiki dessine.
+//
+// Les rangées suivantes sont fermées par le bas de celle du dessus : le « \/ »
+// et le « /\ » des alvéoles voisines forment le sommet de celles d'en dessous.
+// La PREMIÈRE n'a rien au-dessus d'elle, donc sans cette ligne le plateau
+// s'ouvre par le haut.
+//
+// Le contrôle est fait sur le RENDU : les tirets doivent tomber exactement sur
+// les deux colonnes INTÉRIEURES de chaque alvéole, là où passe leur bord
+// supérieur — et sur rien d'autre.
+func TestNidDabeillesFermeLeHaut(t *testing.T) {
+	for _, coords := range []bool{false, true} {
+		t.Run(fmt.Sprintf("coords=%v", coords), func(t *testing.T) {
+			m := damierTest(styleHoney, coords)
+			lines := m.boardLines()
+			off := 0
+			if coords {
+				off = 1 // l'en-tête des lettres
+			}
+			fermeture := []rune(lines[off])
+			premiere := []rune(lines[off+1])
+
+			// Les deux colonnes intérieures de chaque alvéole, relevées sur
+			// la première ligne de cases : elles suivent chaque « / ».
+			var attendu []int
+			for i, ch := range premiere {
+				if ch == '/' {
+					attendu = append(attendu, i+1, i+2)
+				}
+			}
+			var tirets []int
+			for i, ch := range fermeture {
+				if ch == '_' {
+					tirets = append(tirets, i)
+				}
+			}
+			if len(tirets) != len(attendu) {
+				t.Fatalf("%d tirets de fermeture, attendu %d (deux par alvéole)",
+					len(tirets), len(attendu))
+			}
+			for i := range tirets {
+				if tirets[i] != attendu[i] {
+					t.Errorf("tiret %d en colonne %d, attendu %d", i, tirets[i], attendu[i])
 				}
 			}
 		})

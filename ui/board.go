@@ -61,8 +61,12 @@ func linesPerCell(style int) int {
 
 // borderLines donne le nombre de lignes de décoration ajoutées AVANT la première
 // ligne de cases. Sert au calcul de la position du curseur pour la souris.
+//
+// Le damier à bordures ouvre par sa bordure Nord ; le nid d'abeilles, par la
+// ligne « __ » qui ferme le haut de sa première rangée — celle que la référence
+// HexWiki dessine et qui nous manquait.
 func borderLines(style int) int {
-	if style == styleBordered {
+	if style == styleBordered || style == styleHoney {
 		return 1
 	}
 	return 0
@@ -278,7 +282,18 @@ func (m Model) borderedRowWidth() int {
 // celui du losange, qui fait emboîter les rangées au lieu de les empiler.
 func (m Model) rowsHoneycomb() []boardRow {
 	n := m.board.N
-	rows := make([]boardRow, 0, 2*n)
+	rows := make([]boardRow, 0, 2*n+1)
+
+	// Le haut de la PREMIÈRE rangée, et lui seul, n'est fermé par rien : les
+	// rangées suivantes le sont par le bas de celle du dessus. On trace donc
+	// la ligne « __ » de la référence, dont les tirets tombent sur les deux
+	// colonnes intérieures de chaque alvéole — c'est-à-dire exactement là où
+	// passe leur bord supérieur.
+	rows = append(rows, boardRow{
+		text: strings.Repeat(" ", m.rowIndent(0)) + strings.Repeat(" __ ", n),
+		row:  -1,
+	})
+
 	for r := 0; r < n; r++ {
 		creux := strings.Repeat(" ", m.rowIndent(r))
 		var top, bot strings.Builder
