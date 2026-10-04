@@ -379,7 +379,8 @@ func (m Model) assemble(lines []string) string {
 // est le pas d'une case à la suivante, et quelle largeur est cliquable. Comme
 // rowStep, cela dépend du damier : une case de losange fait une colonne, une
 // alvéole en fait quatre, et le damier à bordures précède ses cases de deux
-// « \ ».
+// « \ ». Le losange de hexagones, lui, a sa propre fonction : ses lignes sont
+// des diagonales, donc la recherche de la case ne part pas d'une rangée.
 func (m Model) cellGeom() (lead, step, hit int) {
 	switch m.styleIdx {
 	case styleBordered:
@@ -389,6 +390,33 @@ func (m Model) cellGeom() (lead, step, hit int) {
 	default:
 		return 0, cellW + cellGap, cellW
 	}
+}
+
+// diamondCellAt : la souris dans le losange de hexagones. lx et ly sont déjà
+// ramenés à l'origine du plateau.
+//
+// On cherche d'abord la LIGNE — une diagonale — puis la case en son sein. Le
+// « __ » qui sépare deux alvéoles voisines n'est pas cliquable : il n'y a pas
+// de case entre elles.
+func (m Model) diamondCellAt(lx, ly int) (int, int, bool) {
+	n := m.board.N
+	if ly < 0 || ly >= 2*n-1 {
+		return 0, 0, false
+	}
+	d := ly - (n - 1)
+	x := lx - diamondIndent(d)
+	if x < 0 {
+		return 0, 0, false
+	}
+	cells := diamondLine(n, d)
+	i := x / diamondPeriod
+	if i >= len(cells) {
+		return 0, 0, false
+	}
+	if x%diamondPeriod >= diamondCell {
+		return 0, 0, false // le « __ » entre deux alvéoles
+	}
+	return cells[i][0], cells[i][1], true
 }
 
 // cellAt convertit des coordonnées terminal en (ligne, colonne) du plateau. Il
@@ -401,12 +429,19 @@ func (m Model) cellAt(x, y int) (int, int, bool) {
 		top = gap
 	}
 	gridY := top + 2 + borderLines(m.styleIdx) // titre + sous-titre + bordure haute
-	if m.showCoords {
+	if m.coordsVisible() {
 		gridY++ // décalage : l'en-tête des lettres fait partie du bloc
 	}
 	gridX := (m.width - m.boardWidth()) / 2
-	if m.showCoords {
+	if m.coordsVisible() {
 		gridX += 3 // « 12 » et une espace, à gauche
+	}
+
+	// Le losange de hexagones dessine une DIAGONALE par ligne : on ne peut donc
+	// pas y chercher une rangée, il faut chercher la ligne puis la case en son
+	// sein. C'est le seul damier dans ce cas.
+	if m.styleIdx == styleDiamond {
+		return m.diamondCellAt(x-gridX, y-gridY)
 	}
 
 	// Une ligne de cases peut occuper plusieurs lignes de texte (nid d'abeilles).

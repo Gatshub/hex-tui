@@ -9,21 +9,28 @@ import (
 	"hex-tui/hex"
 )
 
-// Trois damiers au choix du joueur. Ils dessinent tous le MÊME plateau (mêmes
+// Quatre damiers au choix du joueur. Ils dessinent tous le MÊME plateau (mêmes
 // cases, mêmes voisins, mêmes règles) : seule la façon de le montrer change.
 //
-//  0. Losange            — une ligne par case, nos glyphes ⬢ ⬡ ·
-//  1. Losange à bordures — idem, plus les bords Est–Ouest matérialisés
-//  2. Nid d'abeilles     — deux lignes par case, l'hexagone est dessiné
+//  0. Losange              — une ligne par case, nos glyphes ⬢ ⬡ ·
+//  1. Losange à bordures   — idem, plus les quatre bords matérialisés
+//  2. Nid d'abeilles       — deux lignes par case, l'hexagone est dessiné
+//  3. Losange de hexagones — l'hexagone, mais une DIAGONALE par ligne
 //
-// Le nid d'abeilles est le seul où l'on VOIT les six voisins, puisqu'ils
-// partagent un côté. C'est aussi le plus encombrant.
-var boardStyles = []string{"Losange", "Losange à bordures", "Nid d'abeilles"}
+// Le nid d'abeilles et le losange de hexagones sont les deux où l'on VOIT les
+// six voisins, puisqu'ils partagent un côté. Ce sont aussi les plus encombrants.
+//
+// Les trois premiers montrent le plateau d'aplomb (une RANGÉE par ligne) ; le
+// quatrième le montre tourné (une DIAGONALE par ligne), ce qui lui donne cette
+// silhouette de losange allongé. C'est le damier n° 2 de HexWiki
+// (Unicode_and_ASCII_boards).
+var boardStyles = []string{"Losange", "Losange à bordures", "Nid d'abeilles", "Losange de hexagones"}
 
 const (
 	styleRhombus  = 0
 	styleBordered = 1
 	styleHoney    = 2
+	styleDiamond  = 3
 )
 
 // coordsMargin : « 12 » et une espace, à gauche seulement. Les numéros à droite
@@ -41,6 +48,21 @@ const honeyCell = 4
 // alvéoles se chevauchent de trois colonnes sur quatre et le dessin n'est plus
 // un nid d'abeilles.
 const honeyStep = honeyCell / 2
+
+// Le losange de hexagones dessine une DIAGONALE par ligne, avec les mêmes
+// alvéoles que le nid d'abeilles : « / », deux colonnes intérieures, « \ ».
+// Deux cases voisines DANS la ligne sont donc ici séparées par un « __ », qui
+// est leur côté partagé — celui que le nid d'abeilles dessine en fin de ligne.
+//
+// Une ligne fait donc six colonnes par alvéole, et la ligne suivante est
+// décalée de la MOITIÉ : diamondStep. C'est le même emboîtement que le nid
+// d'abeilles, à un autre pas.
+const (
+	diamondCell   = 4
+	diamondSep    = 2
+	diamondPeriod = diamondCell + diamondSep
+	diamondStep   = diamondPeriod / 2
+)
 
 // boardRow est une ligne du dessin. row vaut -1 pour une ligne qui n'est PAS une
 // ligne de cases (les bordures Est–Ouest du damier n° 1) : ces lignes ne doivent
@@ -104,15 +126,29 @@ func (m Model) boardRawWidth() int {
 	case styleHoney:
 		// chaque alvéole occupe honeyCell colonnes (le côté est partagé)
 		return n*honeyCell + honeyStep*(n-1)
+	case styleDiamond:
+		// La ligne la plus longue est la diagonale du milieu : n alvéoles
+		// séparées par un « __ », sans séparateur final.
+		return n*diamondPeriod - diamondSep
 	default:
 		return n*cellW + (n-1)*cellGap + indent(n-1)
 	}
 }
 
+// coordsVisible dit si les coordonnées ont un sens dans le damier courant.
+//
+// Elles n'en ont pas dans le losange de hexagones : ses lignes sont des
+// DIAGONALES, donc ni « la ligne 5 » ni « la colonne C » ne désignent une ligne
+// du dessin. Les afficher demanderait de les poser le long des bords, ce qui
+// n'est pas fait — mieux vaut ne rien montrer qu'une marge qui ment.
+func (m Model) coordsVisible() bool {
+	return m.showCoords && m.styleIdx != styleDiamond
+}
+
 // boardWidth renvoie la largeur totale du bloc, coordonnées comprises.
 func (m Model) boardWidth() int {
 	w := m.boardRawWidth()
-	if m.showCoords {
+	if m.coordsVisible() {
 		w += coordsMargin
 	}
 	return w
@@ -158,12 +194,12 @@ func (m Model) rowIndent(r int) int {
 func (m Model) boardLines() []string {
 	rows := m.boardRows()
 	out := make([]string, 0, len(rows)+1)
-	if m.showCoords {
+	if m.coordsVisible() {
 		out = append(out, m.pad(strings.Repeat(" ", coordsMargin)+m.coordHeader()))
 	}
 	for _, b := range rows {
 		line := b.text
-		if m.showCoords {
+		if m.coordsVisible() {
 			if b.row < 0 {
 				// Ligne de décoration (bordure) : pas de numéro, mais on
 				// réserve la même marge pour que tout reste aligné.
@@ -186,6 +222,8 @@ func (m Model) boardRows() []boardRow {
 		return m.rowsBordered()
 	case styleHoney:
 		return m.rowsHoneycomb()
+	case styleDiamond:
+		return m.rowsDiamond()
 	default:
 		return m.rowsRhombus()
 	}
@@ -314,6 +352,62 @@ func (m Model) rowsHoneycomb() []boardRow {
 		// de cases.
 		rows = append(rows, boardRow{text: top.String(), row: r})
 		rows = append(rows, boardRow{text: bot.String(), row: r})
+	}
+	return rows
+}
+
+// diamondLine : les cases de la diagonale r-q = d, dans l'ordre des r croissants.
+//
+// Une diagonale du plateau compte n-|d| cases — c'est ce qui donne au losange
+// de hexagones ses lignes de 1, 2, … n, … 2, 1 cases, donc sa silhouette.
+func diamondLine(n, d int) [][2]int {
+	lo, hi := 0, n-1
+	if d > 0 {
+		lo = d
+	}
+	if d < 0 {
+		hi = n - 1 + d
+	}
+	cells := make([][2]int, 0, hi-lo+1)
+	for r := lo; r <= hi; r++ {
+		cells = append(cells, [2]int{r, r - d})
+	}
+	return cells
+}
+
+// diamondIndent : décalage de la ligne portant la diagonale d. Il grandit avec
+// la distance au milieu, d'un demi-période par cran — c'est l'emboîtement.
+func diamondIndent(d int) int {
+	if d < 0 {
+		d = -d
+	}
+	return diamondStep * d
+}
+
+// rowsDiamond : le losange de hexagones — le damier n° 2 de HexWiki.
+//
+// C'est le MÊME plateau que les autres, montré TOURNÉ : une ligne du dessin est
+// une DIAGONALE du plateau, et non une rangée. D'où la silhouette en losange
+// allongé, et d'où le fait que les cases voisines DANS une ligne soient ici
+// séparées par un « __ » : dans cette orientation, leur côté partagé est
+// horizontal, alors qu'il est vertical dans le nid d'abeilles.
+func (m Model) rowsDiamond() []boardRow {
+	n := m.board.N
+	rows := make([]boardRow, 0, 2*n-1)
+	for k := 0; k < 2*n-1; k++ {
+		d := k - (n - 1)
+		var sb strings.Builder
+		sb.WriteString(strings.Repeat(" ", diamondIndent(d)))
+		for i, c := range diamondLine(n, d) {
+			if i > 0 {
+				sb.WriteString(strings.Repeat("_", diamondSep))
+			}
+			mark, st := m.cellMark(c[0], c[1])
+			sb.WriteString("/" + st.Width(diamondCell-2).Align(lipgloss.Center).Render(mark) + "\\")
+		}
+		// Ligne de décoration : aucune ligne du dessin ne porte un numéro de
+		// rangée, puisque ce sont des diagonales.
+		rows = append(rows, boardRow{text: sb.String(), row: -1})
 	}
 	return rows
 }

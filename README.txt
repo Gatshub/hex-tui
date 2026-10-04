@@ -343,7 +343,7 @@ CHANGER DE NIVEAU SANS QUITTER LA PARTIE
       Adversaire   effet immédiat
       Niveau       effet immédiat — pris en compte dès le prochain
                    coup de l'ordinateur
-      Damier       effet immédiat (les trois dessinent le même plateau)
+      Damier       effet immédiat (les quatre dessinent le même plateau)
       Coordonnées  effet immédiat (A B C… en haut, 1 2 3… sur les côtés)
 
   Le panneau contient aussi « Nouvelle partie » (nouveau plateau, mêmes
@@ -361,7 +361,7 @@ CE QUI EST AFFICHÉ
 
   - Plateau en LOSANGE, chaque ligne décalée d'un demi-pas (jamais en
     quinconce : le décalage s'accumule, il ne revient pas en arrière).
-  - Trois damiers au choix, et coordonnées affichables (voir plus bas).
+  - Quatre damiers au choix, et coordonnées affichables (voir plus bas).
   - Curseur : fond bleu.
   - ⬢ Nord–Sud en cyan, ⬡ Est–Ouest en ambre.
   - À la victoire, la chaîne gagnante est mise en évidence en vert.
@@ -398,6 +398,29 @@ TROIS DAMIERS, ET LES COORDONNÉES
     0. Losange             une ligne par case, glyphes ⬢ ⬡ ·
     1. Losange à bordures  les QUATRE bords matérialisés ( \ et ■ )
     2. Nid d'abeilles      deux lignes par case, l'hexagone est dessiné
+    3. Losange de hexagones  l'hexagone, mais une DIAGONALE par ligne
+
+  Les trois premiers montrent le plateau d'aplomb — une RANGÉE par ligne. Le
+  quatrième le montre TOURNÉ : chaque ligne du dessin est une diagonale du
+  plateau (r-q constant), et une diagonale compte n-|d| cases. D'où les lignes
+  de 1, 2, … n, … 2, 1 cases, et la silhouette en losange allongé. C'est le
+  damier n° 2 de HexWiki (Unicode_and_ASCII_boards), demandé par le joueur.
+
+  Le plateau est le MÊME, et c'est vérifié : la somme des cases des diagonales
+  vaut n² (TestLosangeDeHexagones). Seule la vue change — mêmes cases, mêmes
+  voisins, mêmes règles.
+
+  Dans ce damier, deux cases voisines DANS une ligne sont séparées par un
+  « __ » : dans cette orientation, leur côté partagé est horizontal, alors
+  qu'il est vertical dans le nid d'abeilles. Le pas d'une alvéole est donc de
+  6 colonnes (4 + 2), et la ligne suivante est décalée de la moitié, 3.
+
+    ATTENTION aux coordonnées : le losange de hexagones N'EN MONTRE PAS. Ses
+    lignes sont des diagonales, donc ni « la ligne 5 » ni « la colonne C » ne
+    désignent une ligne du dessin. Les poser le long des bords est possible
+    mais n'est pas fait ; en attendant, mieux vaut ne rien montrer qu'une
+    marge qui ment. Le réglage « Coordonnées » est donc sans effet dans ce
+    damier-là, et c'est dit.
 
   Dans le damier n° 1, les deux bords HORIZONTAUX (haut et bas) sont les
   bords NORD et SUD — ce sont ceux que relie le camp NordSud (r=0 et
@@ -441,7 +464,9 @@ TROIS DAMIERS, ET LES COORDONNÉES
   raison : elle était restée sur le pas du losange, donc un clic sur une
   alvéole tombait une case trop loin — et le dernier de chaque rangée
   n'était même plus atteignable. TestCellAtRoundTrip part maintenant des
-  cases TELLES QU'ELLES SONT DESSINÉES, dans les trois damiers.
+  cases TELLES QU'ELLES SONT DESSINÉES, dans les trois damiers d'aplomb (le
+  losange de hexagones, dont les lignes sont des diagonales, a son propre
+  test).
 
   Les COORDONNÉES s'affichent à la demande : les lettres (A B C…) en haut,
   alignées sur la première ligne de cases, et les numéros de ligne (1 2 3…)
@@ -453,16 +478,17 @@ TROIS DAMIERS, ET LES COORDONNÉES
   nid d'abeilles (deux colonnes d'écart pour des alvéoles de quatre) et
   les décalait de deux colonnes vers la gauche sur le damier à bordures,
   à cause des « \ » qui précèdent les cases. TestEnteteAligneSurLesCases
-  mesure l'aplomb lettre par lettre, sur le rendu, pour les trois damiers.
+  mesure l'aplomb lettre par lettre, sur le rendu, pour les trois damiers
+  d'aplomb.
 
   Chaque numéro suit le décalage de SA ligne : il est donc juste à gauche
   de ses propres cases et non perdu dans une marge lointaine, comme sur
   les diagrammes de HexWiki. Le damier « à bordures » ne numérote pas ses
   deux lignes de bords : ce ne sont pas des lignes de cases.
 
-  Pour voir les six combinaisons sans lancer le jeu :
+  Pour voir les huit combinaisons sans lancer le jeu :
 
-      HEX_PREVIEW=1 go test ./ui/ -run TestApercuTroisDamiers -v
+      HEX_PREVIEW=1 go test ./ui/ -run TestApercuDamiers -v
 
 --------------------------------------------------------------------
 FONCTIONNEMENT INTERNE

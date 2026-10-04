@@ -80,6 +80,9 @@ func TestBoardGeometry(t *testing.T) {
 func TestCellAtRoundTrip(t *testing.T) {
 	const n = 7
 	for style, nom := range boardStyles {
+		if style == styleDiamond {
+			continue // ses lignes sont des diagonales : TestLosangeDeHexagones
+		}
 		for _, coords := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/coords=%v", nom, coords), func(t *testing.T) {
 				m := testModel(120, 40)

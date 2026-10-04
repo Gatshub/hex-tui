@@ -29,11 +29,11 @@ func damierTest(style int, coords bool) Model {
 	return m
 }
 
-// TestApercuTroisDamiers imprime les trois damiers, avec et sans coordonnées.
+// TestApercuDamiers imprime les quatre damiers, avec et sans coordonnées.
 // C'est l'aperçu que l'on regarde pour juger de l'allure du plateau.
 //
-//	HEX_PREVIEW=1 go test ./ui/ -run TestApercuTroisDamiers -v -count=1
-func TestApercuTroisDamiers(t *testing.T) {
+//	HEX_PREVIEW=1 go test ./ui/ -run TestApercuDamiers -v -count=1
+func TestApercuDamiers(t *testing.T) {
 	if os.Getenv("HEX_PREVIEW") == "" {
 		t.Skip("définir HEX_PREVIEW=1 pour afficher les aperçus")
 	}
@@ -60,6 +60,9 @@ func TestApercuTroisDamiers(t *testing.T) {
 // rendu réel : c'est l'image qu'on juge, pas une formule.
 func TestStylesRespectentLaGeometrie(t *testing.T) {
 	for style, nom := range boardStyles {
+		if style == styleDiamond {
+			continue // ses lignes sont des diagonales : TestLosangeDeHexagones
+		}
 		for _, coords := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/coords=%v", nom, coords), func(t *testing.T) {
 				m := damierTest(style, coords)
@@ -201,6 +204,9 @@ func TestBorduresNordSud(t *testing.T) {
 // cases, et on exige que chaque lettre soit à l'aplomb de la sienne.
 func TestEnteteAligneSurLesCases(t *testing.T) {
 	for style, nom := range boardStyles {
+		if style == styleDiamond {
+			continue // ce damier ne montre pas de coordonnées
+		}
 		t.Run(nom, func(t *testing.T) {
 			m := damierTest(style, true)
 			lines := m.boardLines()
@@ -299,6 +305,107 @@ func TestNidDabeillesFermeLeHaut(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// absInt : valeur absolue, pour les tests.
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// TestLosangeDeHexagones verrouille le quatrième damier, celui dont les lignes
+// sont des DIAGONALES.
+//
+// Quatre choses à la fois, parce qu'elles se tiennent :
+//
+//   - le plateau entier y tient : la somme des cases des diagonales vaut n²,
+//     c'est le même plateau que les autres damiers, montré tourné ;
+//   - une ligne par diagonale, donc 2n-1 lignes ;
+//   - n-|d| cases par ligne, soit 1, 2, … n, … 2, 1 — d'où la silhouette ;
+//   - une indentation d'un demi-période par cran d'éloignement au milieu, en
+//     miroir.
+//
+// LA GÉOMÉTRIE EST ÉCRITE EN CLAIR ICI — 4 colonnes d'alvéole, 2 de séparateur,
+// donc un pas de 6 et un demi-pas de 3. La première version de ce test
+// réutilisait diamondPeriod et diamondIndent pour calculer ce qu'elle
+// vérifiait : elle ne pouvait donc RIEN attraper, et deux mutations sont
+// passées au travers. Un test qui interroge le code avec ses propres formules
+// ne teste que sa cohérence avec lui-même.
+//
+// Et le clic : chaque case doit se retrouver à la colonne où elle est DESSINÉE.
+func TestLosangeDeHexagones(t *testing.T) {
+	const n = 7
+	const (
+		cellules   = 4 // « / », deux colonnes intérieures, « \ »
+		separateur = 2 // le « __ » entre deux alvéoles
+		pas        = cellules + separateur
+		demiPas    = pas / 2
+	)
+	m := testModel(120, 40)
+	m = m.start(n)
+	m.styleIdx = styleDiamond
+	m.board.Set(0, 0, hex.NordSud)
+	m.board.Set(n-1, n-1, hex.EstOuest)
+
+	// Le losange de hexagones ne montre pas de coordonnées : c'est dit, et
+	// c'est vérifié ici.
+	if m.coordsVisible() {
+		t.Error("les coordonnées ne devraient pas s'afficher dans ce damier")
+	}
+
+	total := 0
+	for k := 0; k < 2*n-1; k++ {
+		total += len(diamondLine(n, k-(n-1)))
+	}
+	if total != n*n {
+		t.Errorf("le losange compte %d cases, attendu %d (le plateau entier)", total, n*n)
+	}
+
+	lines := m.boardLines()
+	if len(lines) != 2*n-1 {
+		t.Fatalf("%d lignes, attendu %d (une par diagonale)", len(lines), 2*n-1)
+	}
+
+	// La diagonale du milieu porte n alvéoles : elle doit remplir la largeur du
+	// plateau, ni plus ni moins.
+	if got := lipgloss.Width(strings.TrimRight(lines[n-1], " ")); got != m.boardRawWidth() {
+		t.Errorf("la ligne du milieu fait %d colonnes, la largeur du plateau %d",
+			got, m.boardRawWidth())
+	}
+
+	play := m.buildPlay()
+	top := (m.height - len(play)) / 2
+	gridY := top + 2
+	gridX := (m.width - m.boardWidth()) / 2
+
+	for k, l := range lines {
+		d := k - (n - 1)
+		cells := diamondLine(n, d)
+
+		if got := len(l) - len(strings.TrimLeft(l, " ")); got != demiPas*absInt(d) {
+			t.Errorf("ligne %d (d=%d) : indentation %d, attendu %d",
+				k, d, got, demiPas*absInt(d))
+		}
+		if got := strings.Count(l, "/"); got != len(cells) {
+			t.Errorf("ligne %d (d=%d) : %d cases dessinées, attendu %d",
+				k, d, got, len(cells))
+		}
+		for i, c := range cells {
+			// Le contenu de la case suit son « / ».
+			x := gridX + demiPas*absInt(d) + i*pas + 1
+			gr, gq, ok := m.cellAt(x, gridY+k)
+			if !ok {
+				t.Errorf("ligne %d, case %d : clic refusé", k, i)
+				continue
+			}
+			if gr != c[0] || gq != c[1] {
+				t.Errorf("ligne %d, case %d : clic → (%d,%d), attendu (%d,%d)",
+					k, i, gr, gq, c[0], c[1])
+			}
+		}
 	}
 }
 
