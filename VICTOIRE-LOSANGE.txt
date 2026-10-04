@@ -1,0 +1,85 @@
+VÉRIFICATION DE LA VICTOIRE SUR LE LOSANGE DE HEXAGONES
+=======================================================
+(à partir du screenshot screenshot-2026-10-04_17-52-23.png, 11x11, 34 coups)
+
+
+CE QUI A ÉTÉ FAIT, ET COMMENT
+-----------------------------
+Le 18/10, le joueur signale : « sur le damier losange en hexagone, tu ne
+vérifies pas correctement la victoire », et dépose un screenshot.
+
+Comme un modèle de vision décrit MAL une grille (il a d'abord annoncé « une
+chaîne bleue reliant N à S » alors que le message dit Est-Ouest), le plateau a
+été reconstruit PIERRE PAR PIERRE depuis les pixels :
+
+  1. les pierres sont des taches de couleur franche : cyan = Nord-Sud,
+     ambre = Est-Ouest, vert = le chemin gagnant surligné ;
+  2. leurs centres tombent sur une grille régulière : 72 px pour 6 colonnes
+     (12 px la colonne), 26 px pour une ligne ;
+  3. la grille du losange dit quelle case est chaque tache (ligne k = s+1,
+     colonne = ind(s) + 6i + 1) ;
+  4. le plateau obtenu est donné au moteur du jeu LUI-MÊME
+     (hex.Board.HasWon / Winner), pas à une réécriture.
+
+Scripts : /tmp/reconstruit.py (pixels -> carte), /tmp/plateau.py (carte ->
+plateau), /tmp/juge.go (juge, via le paquet hex).
+
+
+LE PLATEAU RECONSTRUIT (N = Nord-Sud, * = chemin gagnant Est-Ouest)
+-------------------------------------------------------------------
+   ...N.......
+   ...N......*
+   ...NN....*.
+   ...NN..**..
+   ...NN**....
+   ....*N.....
+   ..**.N.....
+   **...NN....
+   ......N....
+   ......NN...
+   ......NN...
+
+
+LE VERDICT DU MOTEUR SUR CE PLATEAU
+-----------------------------------
+  plateau 11x11, 28 pierres posees
+  Nord–Sud  relie ses bords : false
+  Est–Ouest relie ses bords : true
+  Winner() = Est–Ouest
+
+C'est EXACTEMENT ce que le screenshot annonce. La reconstruction est donc
+fidèle, et sur cette position le verdict est JUSTE :
+
+  - le chemin vert va de la case (1,10) — colonne c=n-1, bord EST — à la case
+    (7,0) — colonne c=0, bord OUEST. Est-Ouest est donc bien relié.
+  - les pierres Nord-Sud touchent bien la ligne r=0 (case (0,3)) et la ligne
+    r=n-1 (cases (10,6) et (10,7)), mais la chaîne est COUPÉE entre (4,4) et
+    (5,5) : ces deux cases ne sont pas voisines. Nord-Sud n'est pas relié.
+
+
+CE QUI A ÉTÉ VÉRIFIÉ EN PLUS, DANS LE CODE
+------------------------------------------
+  - HasWon / Winner / WinningCells ne dépendent PAS du damier : ils travaillent
+    sur les coordonnées (r, q) du plateau. Un damier ne peut donc pas, à lui
+    seul, fausser le verdict — il ne peut que tromper l'ŒIL sur où sont les
+    bords.
+  - Les marques de bord sont justes : la ligne r=0 (Nord) est bien le bord
+    SUPÉRIEUR-GAUCHE, la colonne c=n-1 (Est) le bord INFÉRIEUR-GAUCHE, la
+    colonne c=0 (Ouest) le bord SUPÉRIEUR-DROIT, la ligne r=n-1 (Sud) le bord
+    INFÉRIEUR-DROIT. Vérifié sur le dessin, pas sur une formule.
+
+
+CE QUI RESTE OUVERT
+-------------------
+Aucun verdict faux n'a pu être reproduit sur cette position. Si le joueur a vu
+un verdict faux, il faut le CAS PRÉCIS : quels deux bords sa chaîne reliait-elle
+à l'écran, et quel camp le jeu a-t-il annoncé ? Le point à surveiller est le
+suivant :
+
+  LES QUATRE COINS appartiennent aux DEUX bords qu'ils touchent. La case (0,0)
+  est donc à la fois sur la ligne r=0 (Nord) et sur la colonne c=0 (Ouest) ;
+  (0,n-1) sur Nord et Est ; (n-1,0) sur Sud et Ouest ; (n-1,n-1) sur Sud et Est.
+  C'est la convention habituelle du Hex, et elle reste saine : deux chaînes
+  adverses reliant des bords opposés devraient se croiser. Mais c'est le seul
+  endroit où un verdict peut surprendre, et c'est précisément le genre de chose
+  qu'une vue TOURNÉE rend difficile à voir à l'œil.
