@@ -410,6 +410,12 @@ func TestLosangeDeHexagones(t *testing.T) {
 	// Le POURTOUR, zone par zone. C'est là que le joueur a vu les défauts.
 	for s := 0; s < 2*n-1; s++ {
 		l := strings.TrimSpace(lines[s+1])
+		// Les deux lignes MARQUÉES portent une lettre de bord à chaque bout
+		// (N/O, E/S) : on les ôte avant de juger le pourtour.
+		l = strings.TrimPrefix(l, "N")
+		l = strings.TrimPrefix(l, "E")
+		l = strings.TrimSuffix(l, "O")
+		l = strings.TrimSuffix(l, "S")
 		switch {
 		case s < n-1:
 			// Moitié haute : la diagonale du dessus est plus à droite, elle ne

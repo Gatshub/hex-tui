@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -278,6 +279,66 @@ func TestFlechesSuiventLEcran(t *testing.T) {
 				t.Errorf("flèche gauche : curseur en colonne %d, il était en %d", xg, x0)
 			}
 		})
+	}
+}
+
+// ansiRE retire les séquences de couleur, pour lire le rendu comme le joueur.
+var ansiRE = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+func sansAnsi(s string) string { return ansiRE.ReplaceAllString(s, "") }
+
+// TestBordsMarquesDansLeLosange : les quatre bords du losange de hexagones
+// portent leur marque, et la marque dit VRAI.
+//
+// Ce damier montre le plateau tourné et ne montre pas de coordonnées : sans ces
+// marques, rien n'indique quel camp relie quoi. C'est le manque signalé par le
+// joueur ; la référence marque de même, aux mêmes endroits.
+//
+// La marque est contrôlée là où elle est DESSINÉE (début et fin de ligne), et
+// on exige en plus que la case voisine soit bien celle du bord annoncé : une
+// marque au bon endroit mais sur le mauvais bord ne servirait à rien.
+func TestBordsMarquesDansLeLosange(t *testing.T) {
+	const n = 7
+	m := testModel(160, 60)
+	m = m.start(n)
+	m.styleIdx = styleDiamond
+
+	mid := (n - 1) / 2
+	// Les deux lignes marquées, et ce que leurs cases de bout SONT.
+	for _, c := range []struct {
+		ligne          int
+		gauche, droite string
+		caseGauche     [2]int // la première case de la diagonale
+		caseDroite     [2]int // la dernière
+	}{
+		{mid + 1, "N", "O", [2]int{0, mid}, [2]int{mid, 0}},
+		{mid + n, "E", "S", [2]int{mid, n - 1}, [2]int{n - 1, mid}},
+	} {
+		l := sansAnsi(strings.TrimRight(m.boardLines()[c.ligne], " "))
+		if !strings.HasPrefix(strings.TrimLeft(l, " "), c.gauche) {
+			t.Errorf("ligne %d : marque de gauche %q attendue — %q", c.ligne, c.gauche, l)
+		}
+		if !strings.HasSuffix(l, c.droite) {
+			t.Errorf("ligne %d : marque de droite %q attendue — %q", c.ligne, c.droite, l)
+		}
+		cells := diamondLine(n, c.ligne-1)
+		if cells[0] != c.caseGauche {
+			t.Errorf("ligne %d : la marque %q est posée devant la case %v, attendu %v (bord %s)",
+				c.ligne, c.gauche, cells[0], c.caseGauche, c.gauche)
+		}
+		if cells[len(cells)-1] != c.caseDroite {
+			t.Errorf("ligne %d : la marque %q est posée après la case %v, attendu %v (bord %s)",
+				c.ligne, c.droite, cells[len(cells)-1], c.caseDroite, c.droite)
+		}
+	}
+
+	// Et les quatre bords sont bien les quatre du plateau : la ligne r=0, la
+	// colonne c=0, la colonne c=n-1, la ligne r=n-1.
+	if got := diamondLine(n, mid)[0]; got[0] != 0 {
+		t.Errorf("la marque N est devant %v, qui n'est pas sur la ligne r=0", got)
+	}
+	if got := diamondLine(n, mid); got[len(got)-1][1] != 0 {
+		t.Errorf("la marque O est derrière %v, qui n'est pas sur la colonne c=0", got[len(got)-1])
 	}
 }
 

@@ -462,6 +462,20 @@ TROIS DAMIERS, ET LES COORDONNÉES
     elles y sont déjà « en haut à gauche » et « en bas à droite », la meilleure
     approximation de la verticale que la grille permette.
 
+    LES QUATRE BORDS SONT MARQUÉS à leur milieu — N et O sur la ligne du haut,
+    E et S sur celle du bas, aux couleurs des deux camps. Sans ces marques, on
+    ne sait pas quel camp relie quoi : le plateau est montré TOURNÉ, et les
+    coordonnées ne sont pas affichées. La référence marque de même, aux mêmes
+    endroits (ses X et 0).
+
+    Où sont les bords d'une diagonale : ses PREMIÈRES cases sont la ligne r=0
+    (Nord) puis la colonne c=n-1 (Est) ; ses DERNIÈRES, la colonne c=0 (Ouest)
+    puis la ligne r=n-1 (Sud). Deux lignes suffisent donc à porter les quatre
+    marques. Chaque marque est posée JUSTE AVANT le premier caractère dessiné
+    de sa ligne, et JUSTE APRÈS le dernier : une colonne calculée écrasait le
+    « \ » de la diagonale du dessus dans la moitié basse, qui déborde d'un
+    caractère de plus que la haute.
+
   Dans le damier n° 1, les deux bords HORIZONTAUX (haut et bas) sont les
   bords NORD et SUD — ce sont ceux que relie le camp NordSud (r=0 et
   r=n-1) — et ils sont tracés en lignes pleines. Les deux bords penchés

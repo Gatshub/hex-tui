@@ -445,6 +445,10 @@ func (m Model) rowsDiamond() []boardRow {
 
 	rows := make([]boardRow, 0, 2*n+1)
 
+	// mid : la ligne qui traverse le losange à sa mi-hauteur. C'est là que
+	// passent les marques de bord, comme dans la référence.
+	mid := (n - 1) / 2
+
 	// Ligne 0 : le bord supérieur de la première diagonale.
 	haut := canevas()
 	for i := range diamondLine(n, 0) {
@@ -454,6 +458,10 @@ func (m Model) rowsDiamond() []boardRow {
 
 	for k := 1; k <= 2*n; k++ {
 		s := k - 1 // la diagonale dont les cases font le HAUT de cette ligne
+		nb := 0
+		if s < 2*n-1 {
+			nb = len(diamondLine(n, s))
+		}
 		l := canevas()
 		// Le canevas ne porte que la GÉOMÉTRIE, en caractères nus. Le style des
 		// cases est mis de côté et appliqué à l'émission : glisser les
@@ -497,7 +505,6 @@ func (m Model) rowsDiamond() []boardRow {
 		// retirée : la mutation qui la neutralise ne change pas un caractère du
 		// rendu. Elle ne servait à rien, et un test ne peut pas la défendre.
 		if s < 2*n-1 {
-			nb := len(diamondLine(n, s))
 			if g := ind(s) - diamondSep; g >= 0 {
 				pose(l, g, strings.Repeat("_", diamondSep))
 			}
@@ -506,11 +513,48 @@ func (m Model) rowsDiamond() []boardRow {
 			}
 		}
 
+		// LES QUATRE BORDS, marqués à leur MILIEU. Sans eux, on ne sait pas quel
+		// camp relie quoi : ce damier montre le plateau TOURNÉ, et il ne montre
+		// pas de coordonnées. La référence marque de même, aux mêmes endroits.
+		//
+		// Où sont les bords d'une diagonale : ses PREMIÈRES cases sont la ligne
+		// r=0 (Nord) puis la colonne c=n-1 (Est) ; ses DERNIÈRES, la colonne
+		// c=0 (Ouest) puis la ligne r=n-1 (Sud). Deux lignes suffisent donc à
+		// porter les quatre, et ce sont les mêmes que la référence marque.
+		if s == mid || s == mid+n-1 {
+			gauche, droite := "N", "O"
+			stG, stD := styleNordSud, styleEstOuest
+			if s != mid {
+				gauche, droite = "E", "S"
+				stG, stD = styleEstOuest, styleNordSud
+			}
+			// On pose les marques JUSTE AVANT le premier caractère dessiné et
+			// JUSTE APRÈS le dernier, plutôt qu'à une colonne calculée : la
+			// moitié basse déborde d'un caractère de plus que la haute, et une
+			// formule unique écrasait le « \ » de la diagonale du dessus.
+			g := 0
+			for g < larg && l[g] == ' ' {
+				g++
+			}
+			if g--; g >= 0 {
+				pose(l, g, gauche)
+				stylé[g] = stG.Bold(true).Render(gauche)
+			}
+			d := larg - 1
+			for d > 0 && l[d] == ' ' {
+				d--
+			}
+			if d++; d < larg {
+				pose(l, d, droite)
+				stylé[d] = stD.Bold(true).Render(droite)
+			}
+		}
+
 		var sb strings.Builder
 		for col := 0; col < larg; {
 			if txt, ok := stylé[col]; ok {
 				sb.WriteString(txt)
-				col += 2
+				col += lipgloss.Width(txt)
 				continue
 			}
 			sb.WriteRune(l[col])
