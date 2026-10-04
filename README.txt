@@ -454,6 +454,14 @@ TROIS DAMIERS, ET LES COORDONNÉES
     marge qui ment. Le réglage « Coordonnées » est donc sans effet dans ce
     damier-là, et c'est dit.
 
+    ATTENTION aux FLÈCHES : dans ce damier, gauche et droite suivent l'ÉCRAN,
+    pas le plateau. La voisine par « est » (r+1, c+1) s'y dessine en effet à
+    GAUCHE — suivre les directions du plateau inverserait les deux flèches,
+    et c'est exactement le défaut que le joueur a vu. C'est horizDir() qui
+    porte la règle. Le haut et le bas, eux, gardent les directions du plateau :
+    elles y sont déjà « en haut à gauche » et « en bas à droite », la meilleure
+    approximation de la verticale que la grille permette.
+
   Dans le damier n° 1, les deux bords HORIZONTAUX (haut et bas) sont les
   bords NORD et SUD — ce sont ceux que relie le camp NordSud (r=0 et
   r=n-1) — et ils sont tracés en lignes pleines. Les deux bords penchés

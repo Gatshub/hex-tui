@@ -231,6 +231,56 @@ func TestMovementIsUniform(t *testing.T) {
 	}
 }
 
+// positionDessinee : la colonne d'écran où la case (r, c) est DESSINÉE. On la
+// trouve en balayant le rendu — pas en recalculant une formule, qui serait la
+// même que celle du code et ne prouverait donc rien.
+func positionDessinee(t *testing.T, m Model, r, c int) int {
+	t.Helper()
+	play := m.buildPlay()
+	top := (m.height - len(play)) / 2
+	for y := top + 2; y < m.height; y++ {
+		for x := 0; x < m.width; x++ {
+			if gr, gc, ok := m.cellAt(x, y); ok && gr == r && gc == c {
+				return x
+			}
+		}
+	}
+	t.Fatalf("case (%d,%d) introuvable dans le rendu", r, c)
+	return -1
+}
+
+// TestFlechesSuiventLEcran vérifie, DANS LES QUATRE DAMIERS, que la flèche
+// droite déplace le curseur vers une case DESSINÉE plus à droite, et la gauche
+// vers une case dessinée plus à gauche.
+//
+// C'est le bug vu par le joueur sur le losange de hexagones : ses lignes sont
+// des DIAGONALES, donc la case voisine par « est » (r+1, c+1) se dessine à
+// GAUCHE. Suivre les directions du plateau y inverse les deux flèches. On suit
+// l'écran, pas le plateau.
+func TestFlechesSuiventLEcran(t *testing.T) {
+	for style, nom := range boardStyles {
+		t.Run(nom, func(t *testing.T) {
+			m := testModel(160, 60)
+			m = m.start(7)
+			m.styleIdx = style
+			m.cursorR, m.cursorC = 3, 3
+			x0 := positionDessinee(t, m, 3, 3)
+
+			nm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRight})
+			d := nm.(Model)
+			if xd := positionDessinee(t, d, d.cursorR, d.cursorC); xd <= x0 {
+				t.Errorf("flèche droite : curseur en colonne %d, il était en %d", xd, x0)
+			}
+
+			nm, _ = m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+			g := nm.(Model)
+			if xg := positionDessinee(t, g, g.cursorR, g.cursorC); xg >= x0 {
+				t.Errorf("flèche gauche : curseur en colonne %d, il était en %d", xg, x0)
+			}
+		})
+	}
+}
+
 // TestTouchesDeDeplacement confronte l'aide au comportement réel : CHAQUE
 // touche annoncée doit vraiment déplacer le curseur.
 //
@@ -238,6 +288,10 @@ func TestMovementIsUniform(t *testing.T) {
 // que le code ne gérait que h et l. j et k ne faisaient rien, en silence. Un
 // test qui se contente de vérifier ce que le code gère ne voit pas ce genre de
 // manque ; celui-ci part de la LISTE DES TOUCHES, pas des cas implémentés.
+//
+// Il vérifie le déplacement en coordonnées de PLATEAU, et seulement dans le
+// damier d'aplomb par défaut. Le suivi de l'ÉCRAN (les flèches ne doivent pas
+// s'inverser quand le dessin tourne) est le sujet de TestFlechesSuiventLEcran.
 func TestTouchesDeDeplacement(t *testing.T) {
 	cas := []struct {
 		nom string

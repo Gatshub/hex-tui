@@ -227,9 +227,9 @@ func (m Model) playKey(key string) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		return m, m.place()
 	case "h", "left":
-		m.move("W")
+		m.move(m.horizDir(true))
 	case "l", "right":
-		m.move("E")
+		m.move(m.horizDir(false))
 	// j et k sont les pendants de ↓ et ↑ : comme au menu, et comme dans vi.
 	// L'aide les annonçait déjà alors que le code ne les gérait pas.
 	case "k", "y", "up":
@@ -383,6 +383,32 @@ func (m Model) step(dir string) (int, int) {
 		return 0, 0
 	}
 	return hex.DR[k], hex.DC[k]
+}
+
+// horizDir : quelle direction du plateau les flèches GAUCHE et DROITE doivent
+// suivre dans le damier courant.
+//
+// Dans les trois damiers d'aplomb, c'est « ouest » et « est », et il n'y a rien
+// à dire. Dans le losange de hexagones, NON : ses lignes sont des DIAGONALES,
+// donc la case voisine par « est » — (r+1, c+1) — se dessine à GAUCHE, et celle
+// par « ouest » à DROITE. Suivre les directions du plateau y inverse les deux
+// flèches ; c'est le bug que le joueur a vu. On suit l'ÉCRAN : à droite, c'est
+// le sud-ouest.
+//
+// Le haut et le bas, eux, gardent les directions du plateau : dans ce damier
+// elles sont déjà « en haut à gauche » et « en bas à droite », ce qui est la
+// meilleure approximation de la verticale que la grille permette.
+func (m Model) horizDir(gauche bool) string {
+	if m.styleIdx == styleDiamond {
+		if gauche {
+			return "NE"
+		}
+		return "SW"
+	}
+	if gauche {
+		return "W"
+	}
+	return "E"
 }
 
 func (m *Model) move(dir string) {
