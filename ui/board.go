@@ -172,15 +172,31 @@ func (m Model) rowsRhombus() []boardRow {
 	return rows
 }
 
-// rowsBordered : comme le losange, mais les quatre bords sont matérialisés. Les
-// deux côtés penchés sont dessinés avec des « \ », les bords Est–Ouest par deux
-// lignes pleines. Utile pour comprendre qui a relié quoi.
+// rowsBordered : comme le losange, mais les quatre bords sont matérialisés.
+//
+// Les bords NORD et SUD sont les deux bords HORIZONTAUX, en haut et en bas du
+// losange : ce sont eux que relie le camp NordSud (r=0 et r=n-1). Ils sont donc
+// tracés en lignes pleines, et ils font EXACTEMENT la largeur d'une ligne de
+// cases — pas celle du bloc entier. Sans cela ils dépassent du losange : celui
+// du haut du côté droit, celui du bas du côté gauche, puisque chaque ligne de
+// cases s'incline d'un demi-pas vers la droite.
+//
+// Les bords EST et OUEST sont les deux bords PENCHÉS (c=0 et c=n-1), tracés
+// avec des « \ » au début et à la fin de chaque ligne.
 func (m Model) rowsBordered() []boardRow {
 	n := m.board.N
 	rows := make([]boardRow, 0, n+2)
 
-	edge := boardRow{text: styleBorder.Render(strings.Repeat("■", m.boardRawWidth())), row: -1}
-	rows = append(rows, edge)
+	// La longueur d'un bord Nord ou Sud est celle d'une ligne de cases :
+	// décorations « \ » comprises.
+	w := m.borderedRowWidth()
+	bord := func(creux int) boardRow {
+		return boardRow{
+			text: strings.Repeat(" ", creux) + styleBorder.Render(strings.Repeat("■", w)),
+			row:  -1,
+		}
+	}
+	rows = append(rows, bord(indent(0)))
 
 	for r := 0; r < n; r++ {
 		var sb strings.Builder
@@ -188,7 +204,7 @@ func (m Model) rowsBordered() []boardRow {
 		sb.WriteString(styleBorder.Render("\\ "))
 		for q := 0; q < n; q++ {
 			if q > 0 {
-				sb.WriteString(" ")
+				sb.WriteString(strings.Repeat(" ", cellGap))
 			}
 			mark, st := m.cellMark(r, q)
 			sb.WriteString(st.Width(cellW).Align(lipgloss.Center).Render(mark))
@@ -197,8 +213,15 @@ func (m Model) rowsBordered() []boardRow {
 		rows = append(rows, boardRow{text: sb.String(), row: r})
 	}
 
-	rows = append(rows, edge)
+	rows = append(rows, bord(indent(n-1)))
 	return rows
+}
+
+// borderedRowWidth : largeur d'une ligne de cases du damier à bordures, ses
+// décorations « \ » comprises. C'est aussi la longueur des bords Nord et Sud.
+func (m Model) borderedRowWidth() int {
+	n := m.board.N
+	return n*cellW + (n-1)*cellGap + 4 // « \ » + espace + cases + espace + « \ »
 }
 
 // rowsHoneycomb : le nid d'abeilles. Chaque case est un hexagone de deux lignes

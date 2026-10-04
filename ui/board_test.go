@@ -70,7 +70,7 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 				// lettres si les coordonnées sont affichées.
 				attendu := 7 * linesPerCell(style)
 				if style == styleBordered {
-					attendu += 2 // les deux lignes de bords Est–Ouest
+					attendu += 2 // les deux lignes de bords Nord–Sud
 				}
 				if coords {
 					attendu++
@@ -113,6 +113,60 @@ func TestStylesRespectentLaGeometrie(t *testing.T) {
 					prev = col
 				}
 			})
+		}
+	}
+}
+
+// TestBorduresNordSud verrouille la longueur et la position des deux lignes
+// pleines du damier à bordures.
+//
+// Ce sont les bords NORD et SUD (ceux que relie le camp NordSud, r=0 et r=n-1),
+// donc les deux bords HORIZONTAUX. Le défaut corrigé : elles étaient tracées à
+// la largeur du BLOC entier et dépassaient de n-1 colonnes — celle du haut à
+// droite, celle du bas à gauche — puisque chaque ligne de cases s'incline.
+//
+// Le contrôle est fait sur le RENDU réel : on compare la ligne de bordure à la
+// ligne de cases qu'elle coiffe, caractère par caractère, plutôt qu'à une
+// formule.
+func TestBorduresNordSud(t *testing.T) {
+	m := damierTest(styleBordered, false)
+	lines := m.boardLines()
+	n := m.board.N
+
+	// Étendue visible d'une ligne, en COLONNES D'AFFICHAGE : les glyphes ■ ⬢ ·
+	// font plusieurs octets, donc len() mentirait. On passe par lipgloss.Width,
+	// comme le reste du fichier.
+	etendue := func(l string) (debut, fin int) {
+		l = strings.TrimRight(l, " ")
+		debut = len(l) - len(strings.TrimLeft(l, " ")) // l'indentation est faite d'espaces
+		return debut, lipgloss.Width(l)
+	}
+
+	cas := []struct {
+		nom    string
+		bord   int
+		lignes int // index de la ligne de cases coiffée
+	}{
+		{"Nord", 0, 0},
+		{"Sud", len(lines) - 1, n - 1},
+	}
+	for _, c := range cas {
+		l := lines[c.bord]
+		got := strings.Count(l, "■")
+		bordDebut, bordFin := etendue(l)
+		rowDebut, rowFin := etendue(lines[borderLines(styleBordered)+c.lignes])
+
+		if bordFin-bordDebut != rowFin-rowDebut {
+			t.Errorf("bord %s : %d colonnes, la ligne %d en fait %d — la bordure dépasse le losange",
+				c.nom, bordFin-bordDebut, c.lignes+1, rowFin-rowDebut)
+		}
+		if got != rowFin-rowDebut {
+			t.Errorf("bord %s : %d cases de bordure, la ligne %d en fait %d",
+				c.nom, got, c.lignes+1, rowFin-rowDebut)
+		}
+		if bordDebut != rowDebut {
+			t.Errorf("bord %s : commence en colonne %d, la ligne %d commence en %d",
+				c.nom, bordDebut, c.lignes+1, rowDebut)
 		}
 	}
 }

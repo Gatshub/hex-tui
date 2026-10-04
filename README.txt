@@ -370,8 +370,19 @@ TROIS DAMIERS, ET LES COORDONNÉES
   dessinent le MÊME plateau : mêmes cases, mêmes voisins, mêmes règles.
 
     0. Losange             une ligne par case, glyphes ⬢ ⬡ ·
-    1. Losange à bordures  bords Est–Ouest matérialisés ( \ et ■ )
+    1. Losange à bordures  les QUATRE bords matérialisés ( \ et ■ )
     2. Nid d'abeilles      deux lignes par case, l'hexagone est dessiné
+
+  Dans le damier n° 1, les deux bords HORIZONTAUX (haut et bas) sont les
+  bords NORD et SUD — ce sont ceux que relie le camp NordSud (r=0 et
+  r=n-1) — et ils sont tracés en lignes pleines. Les deux bords penchés
+  sont EST et OUEST, tracés avec des « \ ».
+
+  ATTENTION à la longueur de ces lignes pleines : elles font la largeur
+  d'UNE LIGNE DE CASES, pas celle du bloc entier. Le losange s'inclinant
+  d'un demi-pas par ligne, une bordure à la largeur du bloc dépasserait
+  de n-1 colonnes — celle du haut du côté droit, celle du bas du côté
+  gauche. C'était le défaut, corrigé et verrouillé par TestBorduresNordSud.
 
   Le nid d'abeilles est le seul où l'on VOIT les six voisins, puisqu'ils
   partagent un côté. C'est la réponse à la question « cette case
