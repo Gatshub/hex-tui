@@ -4,8 +4,6 @@ HEX-TUI — le jeu de Hex pour le terminal
 Écrit en Go avec les bibliothèques Charm (Bubble Tea + Lip Gloss),
 en plein écran.
 
-Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
-
 --------------------------------------------------------------------
 ÉTAT ACTUEL   (mis à jour le samedi 3 octobre 2026)
 --------------------------------------------------------------------
@@ -72,17 +70,16 @@ Méthode de travail de ce dossier : voir  ~/Work/METHODE.md
 LIEUX
 --------------------------------------------------------------------
 
-  Sources .......... ~/Work/hex-tui
+  Sources ........... le présent dépôt
   Binaire installé .. ~/.local/bin/hex-tui         (dans le PATH)
-  Compilation ....... ~/Work/hex-tui/bin/hex-tui   (ignoré par Git)
-  Dépôt Git ......... ~/Work/hex-tui/.git          (branche master)
-  Dépôt distant ..... https://github.com/Gatshub/hex-tui      (privé)
+  Compilation ....... bin/hex-tui                  (ignoré par Git)
+  Dépôt Git ......... le présent dépôt             (branche master)
+  Dépôt distant ..... https://github.com/Gatshub/hex-tui
   Données de jeu .... aucune (parties en mémoire seulement)
-  Note de moteur .... ~/Work/hex-tui/STRATEGIE.md  (extraction de la
+  Note de moteur .... STRATEGIE.md (ce dépôt : extraction de la
                      feuille de route HexWiki et des leviers de force :
                      quoi tenter, dans quel ordre, et avec quel risque)
-  Documentation ..... ~/Work/hex-tui/README.txt (ce fichier)
-                      ~/Work/METHODE.md (méthode commune)
+  Documentation ..... README.txt (ce fichier)
 
 --------------------------------------------------------------------
 LE JEU
@@ -641,7 +638,7 @@ REBUILD / TESTS
 
   Ensuite :
 
-      cd ~/Work/hex-tui
+      cd hex-tui
       make build      # compile -> bin/hex-tui
       make test       # lance tous les tests
       make run        # compile et lance
@@ -657,7 +654,7 @@ DÉSINSTALLER
 --------------------------------------------------------------------
 
       rm ~/.local/bin/hex-tui
-      rm -rf ~/Work/hex-tui           # supprime aussi les sources
+      rm -rf hex-tui                  # supprime aussi les sources
 
 --------------------------------------------------------------------
 À FAIRE / IDÉES
